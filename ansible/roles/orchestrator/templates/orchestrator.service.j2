@@ -1,0 +1,26 @@
+[Unit]
+Description=Preview Deployer Orchestrator Service
+After=network.target docker.service nginx.service
+Requires=docker.service nginx.service
+
+[Service]
+Type=simple
+User={{ deployment_user }}
+Group={{ deployment_user }}
+WorkingDirectory={{ orchestrator_dir }}
+EnvironmentFile={{ orchestrator_dir }}/.env
+ExecStart=/usr/bin/node {{ orchestrator_dir }}/dist/index.js
+Restart=always
+RestartSec=10
+StandardOutput=append:{{ orchestrator_dir }}/logs/orchestrator.log
+StandardError=append:{{ orchestrator_dir }}/logs/orchestrator-error.log
+
+# Security settings
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths={{ orchestrator_dir }} /opt/preview-deployments /etc/nginx/preview-configs
+
+[Install]
+WantedBy=multi-user.target

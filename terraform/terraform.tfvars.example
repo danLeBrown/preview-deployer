@@ -1,0 +1,8 @@
+# Copy this file to terraform.tfvars and fill in your values
+# terraform.tfvars is gitignored and should not be committed
+
+do_token       = "your-digital-ocean-api-token-here"
+ssh_public_key = "ssh-rsa AAAA..."
+region         = "nyc3"
+droplet_size   = "s-2vcpu-4gb"
+project_name   = "preview-deployer"

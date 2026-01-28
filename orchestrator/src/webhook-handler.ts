@@ -1,0 +1,257 @@
+import * as crypto from 'crypto';
+import { WebhookPayload, PreviewConfig } from './types/preview-config';
+import { GitHubClient } from './github-client';
+import { DockerManager } from './docker-manager';
+import { NginxManager } from './nginx-manager';
+import { DeploymentTracker } from './types/deployment';
+import { DeploymentInfo } from './types/preview-config';
+
+export class WebhookHandler {
+  private webhookSecret: string;
+  private allowedRepos: string[];
+  private githubClient: GitHubClient;
+  private dockerManager: DockerManager;
+  private nginxManager: NginxManager;
+  private tracker: DeploymentTracker;
+  private logger: any;
+
+  constructor(
+    webhookSecret: string,
+    allowedRepos: string[],
+    githubClient: GitHubClient,
+    dockerManager: DockerManager,
+    nginxManager: NginxManager,
+    tracker: DeploymentTracker,
+    logger: any
+  ) {
+    this.webhookSecret = webhookSecret;
+    this.allowedRepos = allowedRepos;
+    this.githubClient = githubClient;
+    this.dockerManager = dockerManager;
+    this.nginxManager = nginxManager;
+    this.tracker = tracker;
+    this.logger = logger;
+  }
+
+  verifySignature(payload: string, signature: string): boolean {
+    if (!signature) {
+      return false;
+    }
+
+    const hmac = crypto.createHmac('sha256', this.webhookSecret);
+    const digest = 'sha256=' + hmac.update(payload).digest('hex');
+    const isValid = crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(digest));
+
+    if (!isValid) {
+      this.logger.warn('Webhook signature verification failed');
+    }
+
+    return isValid;
+  }
+
+  validateRepository(repoFullName: string): boolean {
+    const isAllowed = this.allowedRepos.includes(repoFullName);
+    if (!isAllowed) {
+      this.logger.warn({ repoFullName, allowedRepos: this.allowedRepos }, 'Repository not in allowed list');
+    }
+    return isAllowed;
+  }
+
+  async handleWebhook(payload: WebhookPayload): Promise<void> {
+    const { action, pull_request, repository } = payload;
+    const repoFullName = repository.full_name;
+    const prNumber = pull_request.number;
+
+    // Validate repository
+    if (!this.validateRepository(repoFullName)) {
+      throw new Error(`Repository ${repoFullName} is not in the allowed list`);
+    }
+
+    this.logger.info(
+      { action, repoFullName, prNumber },
+      'Processing webhook'
+    );
+
+    try {
+      switch (action) {
+        case 'opened':
+        case 'reopened':
+          await this.handleDeploy(payload);
+          break;
+        case 'synchronize':
+          await this.handleUpdate(payload);
+          break;
+        case 'closed':
+          await this.handleCleanup(payload);
+          break;
+        default:
+          this.logger.debug({ action }, 'Unhandled webhook action');
+      }
+    } catch (error: any) {
+      this.logger.error(
+        { action, repoFullName, prNumber, error: error.message },
+        'Webhook handling failed'
+      );
+
+      // Post failure comment to GitHub
+      try {
+        const comment = GitHubClient.formatComment('failure');
+        await this.githubClient.postComment(
+          repository.owner.login,
+          repository.name,
+          prNumber,
+          comment
+        );
+      } catch (commentError: any) {
+        this.logger.error(
+          { error: commentError.message },
+          'Failed to post failure comment'
+        );
+      }
+
+      throw error;
+    }
+  }
+
+  private async handleDeploy(payload: WebhookPayload): Promise<void> {
+    const { pull_request, repository } = payload;
+    const prNumber = pull_request.number;
+    const repoOwner = repository.owner.login;
+    const repoName = repository.name;
+
+    // Check if deployment already exists
+    const existingDeployment = this.tracker.getDeployment(prNumber);
+    if (existingDeployment) {
+      this.logger.info({ prNumber }, 'Deployment already exists, updating instead');
+      await this.handleUpdate(payload);
+      return;
+    }
+
+    // Post building comment
+    let commentId: number | undefined;
+    try {
+      const buildingComment = GitHubClient.formatComment('building');
+      commentId = await this.githubClient.postComment(
+        repoOwner,
+        repoName,
+        prNumber,
+        buildingComment
+      );
+    } catch (error: any) {
+      this.logger.error({ error: error.message }, 'Failed to post building comment');
+      // Continue with deployment even if comment fails
+    }
+
+    // Create preview config
+    const config: PreviewConfig = {
+      prNumber,
+      repoName,
+      repoOwner,
+      branch: pull_request.head.ref,
+      commitSha: pull_request.head.sha,
+      cloneUrl: pull_request.head.repo.clone_url,
+      framework: 'nestjs', // Will be detected during deployment
+      dbType: 'postgres',
+    };
+
+    // Deploy preview
+    const { url, appPort } = await this.dockerManager.deployPreview(config);
+
+    // Add nginx config
+    await this.nginxManager.addPreview(prNumber, appPort);
+
+    // Save deployment info
+    const deployment: DeploymentInfo = {
+      ...config,
+      appPort,
+      dbPort: 9000 + prNumber,
+      status: 'running',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      url,
+      commentId,
+    };
+
+    await this.tracker.saveDeployment(deployment);
+
+    // Update comment with success
+    if (commentId) {
+      try {
+        const successComment = GitHubClient.formatComment('success', url);
+        await this.githubClient.updateComment(repoOwner, repoName, commentId, successComment);
+      } catch (error: any) {
+        this.logger.error({ error: error.message }, 'Failed to update comment');
+      }
+    }
+
+    this.logger.info({ prNumber, url }, 'Preview deployed successfully');
+  }
+
+  private async handleUpdate(payload: WebhookPayload): Promise<void> {
+    const { pull_request, repository } = payload;
+    const prNumber = pull_request.number;
+    const repoOwner = repository.owner.login;
+    const repoName = repository.name;
+
+    const deployment = this.tracker.getDeployment(prNumber);
+    if (!deployment) {
+      this.logger.warn({ prNumber }, 'Deployment not found for update, deploying new');
+      await this.handleDeploy(payload);
+      return;
+    }
+
+    // Post building comment
+    let commentId = deployment.commentId;
+    if (commentId) {
+      try {
+        const buildingComment = GitHubClient.formatComment('building');
+        await this.githubClient.updateComment(repoOwner, repoName, commentId, buildingComment);
+      } catch (error: any) {
+        this.logger.error({ error: error.message }, 'Failed to update building comment');
+      }
+    }
+
+    // Update preview
+    await this.dockerManager.updatePreview(prNumber, pull_request.head.sha);
+
+    // Update deployment info
+    deployment.commitSha = pull_request.head.sha;
+    deployment.updatedAt = new Date().toISOString();
+    deployment.status = 'running';
+    await this.tracker.saveDeployment(deployment);
+
+    // Update comment with success
+    if (commentId && deployment.url) {
+      try {
+        const successComment = GitHubClient.formatComment('success', deployment.url);
+        await this.githubClient.updateComment(repoOwner, repoName, commentId, successComment);
+      } catch (error: any) {
+        this.logger.error({ error: error.message }, 'Failed to update comment');
+      }
+    }
+
+    this.logger.info({ prNumber }, 'Preview updated successfully');
+  }
+
+  private async handleCleanup(payload: WebhookPayload): Promise<void> {
+    const { pull_request } = payload;
+    const prNumber = pull_request.number;
+
+    const deployment = this.tracker.getDeployment(prNumber);
+    if (!deployment) {
+      this.logger.warn({ prNumber }, 'Deployment not found for cleanup');
+      return;
+    }
+
+    // Cleanup Docker containers
+    await this.dockerManager.cleanupPreview(prNumber);
+
+    // Remove nginx config
+    await this.nginxManager.removePreview(prNumber);
+
+    // Delete deployment record
+    await this.tracker.deleteDeployment(prNumber);
+
+    this.logger.info({ prNumber }, 'Preview cleaned up successfully');
+  }
+}

@@ -1,0 +1,111 @@
+---
+- name: Create orchestrator directory
+  file:
+    path: "{{ orchestrator_dir }}"
+    state: directory
+    mode: '0755'
+    owner: "{{ deployment_user }}"
+    group: "{{ deployment_user }}"
+
+- name: Create preview deployments directory
+  file:
+    path: /opt/preview-deployments
+    state: directory
+    mode: '0755'
+    owner: "{{ deployment_user }}"
+    group: "{{ deployment_user }}"
+
+- name: Install Node.js v20 LTS using NodeSource repository
+  shell: |
+    curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+    apt-get install -y nodejs
+  args:
+    creates: /usr/bin/node
+
+- name: Verify Node.js installation
+  command: node --version
+  register: node_version
+  changed_when: false
+
+- name: Display Node.js version
+  debug:
+    msg: "Node.js installed: {{ node_version.stdout }}"
+
+- name: Copy orchestrator source code
+  copy:
+    src: "{{ playbook_dir }}/../../orchestrator/"
+    dest: "{{ orchestrator_dir }}"
+    owner: "{{ deployment_user }}"
+    group: "{{ deployment_user }}"
+    mode: '0755'
+  when: orchestrator_source == "local"
+
+- name: Clone orchestrator from repository
+  git:
+    repo: "{{ orchestrator_repo_url }}"
+    dest: "{{ orchestrator_dir }}"
+    version: "{{ orchestrator_repo_branch | default('main') }}"
+    update: yes
+  when: orchestrator_source == "git"
+  become_user: "{{ deployment_user }}"
+
+- name: Install orchestrator dependencies
+  npm:
+    path: "{{ orchestrator_dir }}"
+    state: present
+    production: yes
+  become_user: "{{ deployment_user }}"
+
+- name: Build orchestrator TypeScript
+  shell: npm run build
+  args:
+    chdir: "{{ orchestrator_dir }}"
+  become_user: "{{ deployment_user }}"
+
+- name: Create orchestrator environment file
+  template:
+    src: orchestrator.env.j2
+    dest: "{{ orchestrator_dir }}/.env"
+    owner: "{{ deployment_user }}"
+    group: "{{ deployment_user }}"
+    mode: '0600'
+
+- name: Create systemd service file
+  template:
+    src: orchestrator.service.j2
+    dest: /etc/systemd/system/preview-deployer-orchestrator.service
+  notify:
+    - reload systemd
+    - restart orchestrator
+
+- name: Set up log rotation for orchestrator
+  copy:
+    content: |
+      {{ orchestrator_dir }}/logs/*.log {
+          daily
+          rotate 7
+          compress
+          delaycompress
+          missingok
+          notifempty
+          create 0644 {{ deployment_user }} {{ deployment_user }}
+      }
+    dest: /etc/logrotate.d/preview-deployer-orchestrator
+    mode: '0644'
+
+- name: Ensure orchestrator service is started and enabled
+  systemd:
+    name: preview-deployer-orchestrator
+    state: started
+    enabled: yes
+    daemon_reload: yes
+
+- name: Verify orchestrator service status
+  systemd:
+    name: preview-deployer-orchestrator
+  register: orchestrator_status
+  changed_when: false
+
+- name: Display orchestrator status
+  debug:
+    msg: "Orchestrator service is {{ orchestrator_status.status.ActiveState }}"

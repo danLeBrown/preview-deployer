@@ -1,0 +1,11 @@
+---
+orchestrator_source: "local"  # Options: "local" or "git"
+orchestrator_repo_url: ""
+orchestrator_repo_branch: "main"
+github_token: ""
+github_webhook_secret: ""
+allowed_repos: []
+preview_base_url: ""
+cleanup_ttl_days: 7
+max_concurrent_previews: 10
+server_ip: ""

@@ -1,0 +1,13 @@
+---
+- name: Configure Preview Deployer Server
+  hosts: preview_deployer
+  become: yes
+  vars:
+    deployment_user: preview-deployer
+    orchestrator_dir: /opt/preview-deployer
+    orchestrator_port: 3000
+
+  roles:
+    - docker
+    - nginx
+    - orchestrator

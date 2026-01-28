@@ -1,0 +1,38 @@
+# Preview Deployer Configuration
+# Place this file as `preview-config.yml` in your repository root
+
+# Framework selection (required)
+# Options: nestjs, go
+framework: nestjs
+
+# Database type (required)
+# Options: postgres, mysql, mongodb
+database: postgres
+
+# Health check endpoint path (required)
+# This endpoint will be polled to verify the app is ready
+health_check_path: /health
+
+# Optional: Custom build commands
+# These commands will be run before starting the container
+# build_commands:
+#   - npm install
+#   - npm run build
+
+# Optional: Environment variables
+# These will be passed to your application container
+# env:
+#   - NODE_ENV=preview
+#   - DEBUG=true
+
+# Optional: Custom Dockerfile path
+# If not specified, the orchestrator will look for Dockerfile in the repo root
+# dockerfile: ./Dockerfile
+
+# Optional: Database seeding
+# Run SQL scripts or commands after database is created
+# seed:
+#   - type: sql
+#     file: ./seed.sql
+#   - type: command
+#     command: npm run seed
