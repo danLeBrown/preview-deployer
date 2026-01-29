@@ -57,8 +57,13 @@ http {
     include /etc/nginx/sites-enabled/*;
 
     ##
-    # Preview Deployer Configs
+    # Preview Deployer - default server with dynamic preview locations
     ##
-    # Dynamic preview configurations are included here
-    include /etc/nginx/preview-configs/*.conf;
+    server {
+        listen 80 default_server;
+        listen [::]:80 default_server;
+        server_name _;
+        # Dynamic preview location blocks (each file: location /pr-N/ { ... })
+        include /etc/nginx/preview-configs/*.conf;
+    }
 }

@@ -1,0 +1,35 @@
+---
+description: TypeScript and build conventions for orchestrator and CLI
+globs: "**/*.ts"
+alwaysApply: false
+---
+
+# TypeScript and Build Conventions
+
+Apply when editing `.ts` files in `orchestrator/` or `cli/`.
+
+## Config and hot paths
+
+- **Package tsconfig**: Use `"extends": "../tsconfig.json"` (one level up from the package), not `"../../tsconfig.json"`.
+- **Deployment tracker**: Use **sync** `fs` (`readFileSync`/`writeFileSync`) for `getDeployment()`, `getAllDeployments()`, `allocatePorts()`. Use **async** `fs/promises` for `loadStore()`, `saveStore()`, and other persistence.
+
+## Types and imports
+
+- **dockerode**: No maintained `@types/dockerode`. Use a local `declare module 'dockerode'` or `// @ts-ignore` on the import; document in orchestrator README if needed.
+- **Optional native deps** (e.g. keytar): May fail to build; treat as optional; document fallback (e.g. config file).
+
+## Strict mode
+
+- Variables: Ensure variables are assigned before use (e.g. `commentId` in webhook handler: use `let commentId: number | undefined` and check before use).
+- Route handlers: After `res.status(...).json(...)` use `return` so all code paths return (satisfies "not all code paths return a value").
+- Unused parameters: Prefix with `_` (e.g. `_req`, `_res`).
+
+## Example
+
+```typescript
+// Route handler – explicit return after sending response
+if (!isValid) {
+  res.status(400).json({ error: 'Invalid' });
+  return;
+}
+```

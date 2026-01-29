@@ -1,0 +1,31 @@
+---
+description: Project standards, plan, and docs - read before implementing features
+alwaysApply: true
+---
+
+# Preview Deployer – Standards and Context
+
+Before implementing new features or changes, read and follow these artifacts.
+
+## Required reading (in order)
+
+1. **README.md** – Project overview, features, quick start, structure.
+2. **docs/implementation-plan.md** – Canonical implementation plan: architecture, project structure, implementation notes (TypeScript, nginx, deployment tracker, dockerode, keytar), port allocation, routing, deployment tracking.
+3. **docs/architecture.md** – System design, components, data flow, security, scaling.
+4. **docs/configuration.md** – Config options, env vars, Terraform/Ansible variables.
+5. **docs/quickstart.md** – Prerequisites and setup flow.
+6. **docs/troubleshooting.md** – Common issues and debugging.
+
+## Conventions
+
+- **Monorepo**: pnpm workspaces; packages `orchestrator` and `cli`. Root scripts: `pnpm build`, `pnpm install`.
+- **Stack**: Terraform (DO), Ansible (server config), TypeScript (orchestrator + CLI), Docker, nginx.
+- **Flow**: GitHub webhook → Orchestrator → Docker per PR → nginx routing → preview URLs; cleanup by TTL or PR close.
+- **Ports**: App `8000 + prNumber`, DB `9000 + prNumber`. Path-based routing `/pr-{number}/`.
+- **Validation**: After code changes, run `pnpm build` and `node cli/dist/index.js --help` (or equivalent) before considering work done.
+
+## When adding or changing code
+
+- Align with the plan and docs above.
+- Preserve existing patterns (error handling, logging, strict TypeScript).
+- Update docs if you add config, env vars, or behavior that users or operators need to know.
