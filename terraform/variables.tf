@@ -19,7 +19,8 @@ variable "region" {
 variable "droplet_size" {
   description = "Digital Ocean droplet size"
   type        = string
-  default     = "s-2vcpu-4gb"
+  # default     = "s-2vcpu-4gb"
+  default     = "s-2vcpu-2gb"
 }
 
 variable "project_name" {

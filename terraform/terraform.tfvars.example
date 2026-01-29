@@ -4,5 +4,5 @@
 do_token       = "your-digital-ocean-api-token-here"
 ssh_public_key = "ssh-rsa AAAA..."
 region         = "nyc3"
-droplet_size   = "s-2vcpu-4gb"
+droplet_size   = "s-2vcpu-2gb"
 project_name   = "preview-deployer"

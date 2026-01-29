@@ -25,7 +25,7 @@ project_name   = "preview-deployer"
 - `do_token`: Your Digital Ocean API token (sensitive)
 - `ssh_public_key`: Your SSH public key for accessing the droplet
 - `region`: Digital Ocean region (default: "nyc3")
-- `droplet_size`: Droplet size slug (default: "s-2vcpu-4gb")
+- `droplet_size`: Droplet size slug (default: "s-2vcpu-2gb")
 - `project_name`: Project name for resource tagging (default: "preview-deployer")
 
 ## Usage
