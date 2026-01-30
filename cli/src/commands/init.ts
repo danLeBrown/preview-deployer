@@ -5,10 +5,21 @@ import * as path from 'path';
 import chalk from 'chalk';
 import { ConfigManager, Config } from '../utils/config';
 
+interface InquirerAnswers {
+  doToken: string;
+  region: string;
+  dropletSize: string;
+  githubToken: string;
+  repositories: string;
+  cleanupTtlDays: string;
+  maxConcurrentPreviews: string;
+  alertEmail: string;
+}
+
 export async function initCommand(): Promise<void> {
   console.log(chalk.blue('Initializing preview-deployer configuration...\n'));
 
-  const answers = await inquirer.prompt([
+  const answers = await inquirer.prompt<InquirerAnswers>([
     {
       type: 'password',
       name: 'doToken',
@@ -26,11 +37,13 @@ export async function initCommand(): Promise<void> {
       name: 'dropletSize',
       message: 'Droplet size:',
       choices: [
+        { name: 's-1vcpu-1gb ($6/month)', value: 's-1vcpu-1gb' },
         { name: 's-1vcpu-2gb ($12/month)', value: 's-1vcpu-2gb' },
+        { name: 's-2vcpu-2gb ($18/month)', value: 's-2vcpu-2gb' },
         { name: 's-2vcpu-4gb ($24/month)', value: 's-2vcpu-4gb' },
         { name: 's-4vcpu-8gb ($48/month)', value: 's-4vcpu-8gb' },
       ],
-      default: 's-2vcpu-4gb',
+      default: 's-1vcpu-2gb',
     },
     {
       type: 'password',
@@ -67,6 +80,12 @@ export async function initCommand(): Promise<void> {
         return !isNaN(max) && max > 0 || 'Must be a positive number';
       },
     },
+    {
+      type: 'input',
+      name: 'alertEmail',
+      message: 'Alert email:',
+      default: 'ayomidedaniel00@gmail.com',
+    },
   ]);
 
   // Generate webhook secret
@@ -77,6 +96,7 @@ export async function initCommand(): Promise<void> {
       token: answers.doToken,
       region: answers.region,
       droplet_size: answers.dropletSize,
+      alert_email: answers.alertEmail,
     },
     github: {
       token: answers.githubToken,
@@ -84,8 +104,8 @@ export async function initCommand(): Promise<void> {
       repositories: answers.repositories.split(',').map((r: string) => r.trim()),
     },
     orchestrator: {
-      cleanup_ttl_days: parseInt(answers.cleanupTtlDays, 10),
-      max_concurrent_previews: parseInt(answers.maxConcurrentPreviews, 10),
+      cleanup_ttl_days: parseInt(answers.cleanupTtlDays, 10) || 7,
+      max_concurrent_previews: parseInt(answers.maxConcurrentPreviews, 10) || 10,
     },
   };
 

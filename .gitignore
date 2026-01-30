@@ -45,3 +45,5 @@ logs/
 # Test coverage
 coverage/
 .nyc_output/
+
+preview-config.example.yml

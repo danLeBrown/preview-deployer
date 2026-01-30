@@ -20,8 +20,8 @@ program
   .action(async () => {
     try {
       await initCommand();
-    } catch (error: any) {
-      console.error(chalk.red(`Error: ${error.message}`));
+    } catch (error: unknown) {
+      console.error(chalk.red(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`));
       process.exit(1);
     }
   });
@@ -32,8 +32,8 @@ program
   .action(async () => {
     try {
       await setupCommand();
-    } catch (error: any) {
-      console.error(chalk.red(`Error: ${error.message}`));
+    } catch (error: unknown) {
+      console.error(chalk.red(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`));
       process.exit(1);
     }
   });
@@ -44,8 +44,8 @@ program
   .action(async () => {
     try {
       await statusCommand();
-    } catch (error: any) {
-      console.error(chalk.red(`Error: ${error.message}`));
+    } catch (error: unknown) {
+      console.error(chalk.red(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`));
       process.exit(1);
     }
   });
@@ -56,8 +56,8 @@ program
   .action(async () => {
     try {
       await destroyCommand();
-    } catch (error: any) {
-      console.error(chalk.red(`Error: ${error.message}`));
+    } catch (error: unknown) {
+      console.error(chalk.red(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`));
       process.exit(1);
     }
   });

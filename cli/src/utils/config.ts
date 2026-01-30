@@ -9,6 +9,7 @@ export interface Config {
     token: string;
     region: string;
     droplet_size: string;
+    alert_email: string;
   };
   github: {
     token: string;

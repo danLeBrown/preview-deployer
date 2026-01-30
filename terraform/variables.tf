@@ -28,3 +28,9 @@ variable "project_name" {
   type        = string
   default     = "preview-deployer"
 }
+
+variable "alert_email" {
+  description = "Email address for alerts"
+  type        = string
+  default     = "ayomidedaniel00@gmail.com"
+}

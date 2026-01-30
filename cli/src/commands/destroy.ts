@@ -88,6 +88,7 @@ export async function destroyCommand(): Promise<void> {
       region: config.digitalocean.region,
       droplet_size: config.digitalocean.droplet_size,
       project_name: 'preview-deployer',
+      alert_email: config.digitalocean.alert_email,
     };
 
     const destroyConfirm = await inquirer.prompt([
@@ -100,13 +101,13 @@ export async function destroyCommand(): Promise<void> {
     ]);
 
     if (destroyConfirm.confirm) {
-      await terraform.destroy(terraformVars, false);
+      await terraform.destroy(terraformVars, true);
       console.log(chalk.green('\n✅ Infrastructure destroyed successfully!'));
     } else {
       console.log(chalk.yellow('Destroy cancelled.'));
     }
-  } catch (error: any) {
-    console.error(chalk.red(`Destroy failed: ${error.message}`));
+  } catch (error: unknown) {
+    console.error(chalk.red(`Destroy failed: ${error instanceof Error ? error.message : 'Unknown error'}`));
     process.exit(1);
   }
 }

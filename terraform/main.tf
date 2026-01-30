@@ -66,10 +66,10 @@ resource "digitalocean_tag" "preview_deployer" {
 }
 
 # Reserved IP (optional but recommended for stability)
-resource "digitalocean_reserved_ip" "preview_deployer" {
-  region = var.region
-  tags   = [digitalocean_tag.preview_deployer.id]
-}
+# resource "digitalocean_reserved_ip" "preview_deployer" {
+#   region = var.region
+#   tags   = [digitalocean_tag.preview_deployer.id]
+# }
 
 # Droplet Resource
 resource "digitalocean_droplet" "preview_deployer" {
@@ -94,8 +94,25 @@ resource "digitalocean_droplet" "preview_deployer" {
   EOF
 }
 
-# Assign reserved IP to droplet
-resource "digitalocean_reserved_ip_assignment" "preview_deployer" {
-  ip_address = digitalocean_reserved_ip.preview_deployer.ip_address
-  droplet_id = digitalocean_droplet.preview_deployer.id
+resource "digitalocean_monitor_alert" "preview_deployer_cpu_alert" {
+  alerts {
+    email = [var.alert_email]
+    # slack {
+    #   channel = "Production Alerts"
+    #   url     = "https://hooks.slack.com/services/T1234567/AAAAAAAA/ZZZZZZ"
+    # }
+  }
+  window      = "5m"
+  type        = "v1/insights/droplet/cpu"
+  compare     = "GreaterThan"
+  value       = 95
+  enabled     = true
+  entities    = [digitalocean_droplet.preview_deployer.id]
+  description = "Alert about CPU usage"
 }
+
+# Assign reserved IP to droplet
+# resource "digitalocean_reserved_ip_assignment" "preview_deployer" {
+#   ip_address = digitalocean_reserved_ip.preview_deployer.ip_address
+#   droplet_id = digitalocean_droplet.preview_deployer.id
+# }

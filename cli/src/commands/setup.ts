@@ -1,3 +1,9 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-var-requires */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-return */
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
 import * as inquirer from 'inquirer';
 import * as path from 'path';
 import chalk from 'chalk';
@@ -23,18 +29,32 @@ export async function setupCommand(): Promise<void> {
   }
 
   // Get SSH public key
-  const sshKeyAnswers = await inquirer.prompt([
+  const sshKeyAnswers = await inquirer.prompt<{ sshPublicKey: string, sshPrivateKeyPath: string }>([
     {
       type: 'input',
       name: 'sshPublicKey',
       message: 'SSH public key path (or paste key):',
-      default: '~/.ssh/id_rsa.pub',
+      // default: '~/.ssh/id_rsa.pub',
+      default: '~/.ssh/digital_ocean_ed25519.pub',
       validate: (input: string) => {
         if (input.startsWith('ssh-')) {
           return true; // Pasted key
         }
         const keyPath = input.replace('~', require('os').homedir());
         return require('fs').existsSync(keyPath) || 'SSH key file not found';
+      },
+    },
+    {
+      type: 'input',
+      name: 'sshPrivateKeyPath',
+      message: 'SSH private key path (or paste key):',
+      default: '~/.ssh/digital_ocean_ed25519',
+      validate: (input: string) => {
+        if (input.startsWith('ssh-')) {
+          return 'Only the path to the key file is allowed';
+        }
+        const keyPath = input.replace('~', require('os').homedir());
+        return require('fs').existsSync(keyPath) || `SSH key file not found: ${keyPath}`;
       },
     },
   ]);
@@ -47,8 +67,10 @@ export async function setupCommand(): Promise<void> {
     sshPublicKey = require('fs').readFileSync(keyPath, 'utf-8').trim();
   }
 
+  const sshPrivateKeyPath = sshKeyAnswers.sshPrivateKeyPath
+ 
   // Confirm Terraform apply
-  const confirmAnswer = await inquirer.prompt([
+  const confirmAnswer = await inquirer.prompt<{ confirm: boolean }>([
     {
       type: 'confirm',
       name: 'confirm',
@@ -79,12 +101,13 @@ export async function setupCommand(): Promise<void> {
       region: config.digitalocean.region,
       droplet_size: config.digitalocean.droplet_size,
       project_name: 'preview-deployer',
+      alert_email: config.digitalocean.alert_email,
     };
 
     console.log(chalk.blue('\nTerraform plan:'));
     await terraform.plan(terraformVars);
 
-    const applyConfirm = await inquirer.prompt([
+    const applyConfirm = await inquirer.prompt<{ confirm: boolean }>([
       {
         type: 'confirm',
         name: 'confirm',
@@ -99,7 +122,7 @@ export async function setupCommand(): Promise<void> {
     }
 
     // Apply Terraform
-    await terraform.apply(terraformVars, false);
+    await terraform.apply(terraformVars, true);
 
     // Get outputs
     const outputs = await terraform.getOutputs();
@@ -108,10 +131,10 @@ export async function setupCommand(): Promise<void> {
     console.log(chalk.green(`\nDroplet created: ${serverIp}`));
 
     // Wait for droplet to be ready
-    await terraform.waitForDropletReady(serverIp);
+    await terraform.waitForDropletReady(sshPrivateKeyPath, serverIp);
 
     // Run Ansible
-    const inventoryPath = await ansible.generateInventory(serverIp);
+    const inventoryPath = await ansible.generateInventory(serverIp, sshPrivateKeyPath);
     const ansibleVars = {
       github_token: config.github.token,
       github_webhook_secret: config.github.webhook_secret,
@@ -145,8 +168,8 @@ export async function setupCommand(): Promise<void> {
     console.log('1. Create a PR in one of your repositories');
     console.log('2. Check the PR comments for the preview URL');
     console.log('3. Run "preview status" to see active deployments');
-  } catch (error: any) {
-    console.error(chalk.red(`\nSetup failed: ${error.message}`));
+  } catch (error: unknown) {
+    console.error(chalk.red(`\nSetup failed: ${error instanceof Error ? error.message : 'Unknown error'}`));
     process.exit(1);
   }
 }

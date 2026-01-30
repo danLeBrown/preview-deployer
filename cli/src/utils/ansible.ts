@@ -21,13 +21,10 @@ ${serverIp} ansible_user=root${keyArg}
 `;
 
     fs.writeFileSync(inventoryPath, inventoryContent, 'utf-8');
-    return inventoryPath;
+    return Promise.resolve(inventoryPath);
   }
 
-  async runPlaybook(
-    inventoryPath: string,
-    extraVars: Record<string, string>
-  ): Promise<void> {
+  async runPlaybook(inventoryPath: string, extraVars: Record<string, string>): Promise<void> {
     console.log(chalk.blue('Running Ansible playbook...'));
 
     const varArgs = Object.entries(extraVars)
@@ -48,10 +45,16 @@ ${serverIp} ansible_user=root${keyArg}
       if (stderr) {
         console.error(chalk.yellow(stderr));
       }
-    } catch (error: any) {
-      console.error(chalk.red('Ansible playbook failed:'), error.message);
-      if (error.stderr) {
-        console.error(chalk.red('Ansible stderr:'), error.stderr);
+    } catch (error: unknown) {
+      console.error(
+        chalk.red('Ansible playbook failed:'),
+        error instanceof Error ? error.message : 'Unknown error'
+      );
+      if (
+        'stderr' in (error as Record<string, unknown>) &&
+        typeof (error as Record<string, unknown>).stderr === 'string'
+      ) {
+        console.error(chalk.red('Ansible stderr:'), (error as Record<string, unknown>).stderr);
       }
       throw error;
     }
