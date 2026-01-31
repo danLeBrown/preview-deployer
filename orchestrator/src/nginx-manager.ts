@@ -4,15 +4,16 @@ import * as path from 'path';
 import * as Handlebars from 'handlebars';
 import { exec } from 'child_process';
 import { promisify } from 'util';
+import { Logger } from 'pino';
 
 const execAsync = promisify(exec);
 
 export class NginxManager {
   private configDir: string;
   private template!: HandlebarsTemplateDelegate;
-  private logger: any;
+  private logger: Logger;
 
-  constructor(configDir: string, logger: any) {
+  constructor(configDir: string, logger: Logger) {
     this.configDir = configDir;
     this.logger = logger;
     this.loadTemplate();
@@ -32,9 +33,9 @@ export class NginxManager {
       await fs.writeFile(configPath, config, { mode: 0o644 });
       this.logger.info({ prNumber, appPort, configPath }, 'Created nginx config');
       await this.reloadNginx();
-    } catch (error: any) {
+    } catch (error: unknown) {
       this.logger.error(
-        { prNumber, appPort, error: error.message },
+        { prNumber, appPort, error: error instanceof Error ? error.message : 'Unknown error' },
         'Failed to add nginx preview config'
       );
       throw error;
@@ -48,11 +49,11 @@ export class NginxManager {
       await fs.unlink(configPath);
       this.logger.info({ prNumber, configPath }, 'Removed nginx config');
       await this.reloadNginx();
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Ignore error if file doesn't exist
       if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
         this.logger.error(
-          { prNumber, error: error.message },
+          { prNumber, error: error instanceof Error ? error.message : 'Unknown error' },
           'Failed to remove nginx config'
         );
         throw error;
@@ -77,12 +78,12 @@ export class NginxManager {
       // Reload nginx
       await execAsync('sudo nginx -s reload');
       this.logger.info('Nginx reloaded successfully');
-    } catch (error: any) {
+    } catch (error: unknown) {
       this.logger.error(
-        { error: error.message, stderr: error.stderr },
+        { error: error instanceof Error ? error.message : 'Unknown error', stderr: (error as Record<string, unknown>).stderr },
         'Failed to reload nginx'
       );
-      throw new Error(`Nginx reload failed: ${error.message}`);
+      throw new Error(`Nginx reload failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 }

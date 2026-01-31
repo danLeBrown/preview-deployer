@@ -1,4 +1,3 @@
-// @ts-ignore - dockerode doesn't have types
 import Docker from 'dockerode';
 import * as fs from 'fs/promises';
 import * as path from 'path';
@@ -7,6 +6,7 @@ import { promisify } from 'util';
 import * as Handlebars from 'handlebars';
 import { PreviewConfig, Framework } from './types/preview-config';
 import { DeploymentTracker } from './types/deployment';
+import { Logger } from 'pino';
 
 const execAsync = promisify(exec);
 
@@ -15,14 +15,15 @@ export class DockerManager {
   private deploymentsDir: string;
   private templatesDir: string;
   private tracker: DeploymentTracker;
-  private logger: any;
+  private logger: Logger;
 
   constructor(
     deploymentsDir: string,
     templatesDir: string,
     tracker: DeploymentTracker,
-    logger: any
+    logger: Logger
   ) {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
     this.docker = new Docker();
     this.deploymentsDir = deploymentsDir;
     this.templatesDir = templatesDir;
@@ -75,15 +76,15 @@ export class DockerManager {
       this.logger.info({ prNumber: config.prNumber, url }, 'Preview deployed successfully');
 
       return { url, appPort };
-    } catch (error: any) {
+    } catch (error: unknown) {
       this.logger.error(
-        { prNumber: config.prNumber, error: error.message },
+        { prNumber: config.prNumber, error: error instanceof Error ? error.message : 'Unknown error' },
         'Failed to deploy preview'
       );
       // Cleanup on failure
       await this.cleanupPreview(config.prNumber).catch((cleanupError) => {
         this.logger.error(
-          { prNumber: config.prNumber, error: cleanupError.message },
+          { prNumber: config.prNumber, error: cleanupError instanceof Error ? cleanupError.message : 'Unknown error' },
           'Failed to cleanup after deployment failure'
         );
       });
@@ -115,9 +116,9 @@ export class DockerManager {
       }
 
       this.logger.info({ prNumber }, 'Preview updated successfully');
-    } catch (error: any) {
+    } catch (error: unknown) {
       this.logger.error(
-        { prNumber, error: error.message },
+        { prNumber, error: error instanceof Error ? error.message : 'Unknown error' },
         'Failed to update preview'
       );
       throw error;
@@ -132,7 +133,7 @@ export class DockerManager {
       // Stop and remove containers
       try {
         await execAsync(`docker compose -f ${composeFile} down -v`, { cwd: workDir });
-      } catch (error: any) {
+      } catch (error: unknown) {
         // Ignore if compose file doesn't exist
         this.logger.warn({ prNumber }, 'Docker compose file not found during cleanup');
       }
@@ -144,9 +145,9 @@ export class DockerManager {
       await this.tracker.releasePorts(prNumber);
 
       this.logger.info({ prNumber }, 'Preview cleaned up successfully');
-    } catch (error: any) {
+    } catch (error: unknown) {
       this.logger.error(
-        { prNumber, error: error.message },
+        { prNumber, error: error instanceof Error ? error.message : 'Unknown error' },
         'Failed to cleanup preview'
       );
       throw error;
@@ -156,6 +157,7 @@ export class DockerManager {
   async getPreviewStatus(prNumber: number): Promise<'running' | 'stopped' | 'failed'> {
     try {
       const containerName = `pr-${prNumber}-app`;
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
       const container = this.docker.getContainer(containerName);
       const info = await container.inspect();
 
@@ -166,8 +168,8 @@ export class DockerManager {
       } else {
         return 'failed';
       }
-    } catch (error: any) {
-      this.logger.warn({ prNumber, error: error.message }, 'Failed to get container status');
+    } catch (error: unknown) {
+      this.logger.warn({ prNumber, error: error instanceof Error ? error.message : 'Unknown error' }, 'Failed to get container status');
       return 'stopped';
     }
   }
@@ -203,8 +205,8 @@ export class DockerManager {
         this.logger.warn({ workDir }, 'Framework detection failed, defaulting to NestJS');
         return 'nestjs';
       }
-    } catch (error: any) {
-      this.logger.error({ workDir, error: error.message }, 'Failed to detect framework');
+    } catch (error: unknown) {
+      this.logger.error({ workDir, error: error instanceof Error ? error.message : 'Unknown error' }, 'Failed to detect framework');
       return 'nestjs'; // Default
     }
   }
@@ -244,9 +246,9 @@ export class DockerManager {
           this.logger.info({ port, attempt }, 'Health check passed');
           return true;
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
         // Ignore errors and retry
-        this.logger.debug({ port, attempt, error: error.message }, 'Health check attempt failed');
+        this.logger.debug({ port, attempt, error: error instanceof Error ? error.message : 'Unknown error' }, 'Health check attempt failed');
       }
 
       if (attempt < maxAttempts) {

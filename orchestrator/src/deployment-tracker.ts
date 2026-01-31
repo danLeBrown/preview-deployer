@@ -2,12 +2,13 @@ import * as fs from 'fs/promises';
 import * as fsSync from 'fs';
 import { DeploymentInfo, PreviewStatus } from './types/preview-config';
 import { DeploymentStore, DeploymentTracker } from './types/deployment';
+import { Logger } from 'pino';
 
 export class FileDeploymentTracker implements DeploymentTracker {
   private storePath: string;
-  private logger: any;
+  private logger: Logger;
 
-  constructor(storePath: string, logger: any) {
+  constructor(storePath: string, logger: Logger) {
     this.storePath = storePath;
     this.logger = logger;
   }
@@ -15,8 +16,13 @@ export class FileDeploymentTracker implements DeploymentTracker {
   private async loadStore(): Promise<DeploymentStore> {
     try {
       const data = await fs.readFile(this.storePath, 'utf-8');
-      return JSON.parse(data);
-    } catch (error: any) {
+      return JSON.parse(data) as DeploymentStore;
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        this.logger.error({ error: error.message }, 'Failed to read deployment store');
+      } else {
+        this.logger.error({ error: 'Unknown error' }, 'Failed to read deployment store');
+      }
       if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
         return { deployments: {}, portAllocations: {} };
       }
@@ -32,13 +38,17 @@ export class FileDeploymentTracker implements DeploymentTracker {
     // Synchronous read for immediate access (used in hot paths)
     try {
       const data = fsSync.readFileSync(this.storePath, 'utf-8');
-      const store: DeploymentStore = JSON.parse(data);
+      const store = JSON.parse(data) as DeploymentStore;
       return store.deployments[prNumber];
-    } catch (error: any) {
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        this.logger.error({ error: error.message }, 'Failed to read deployment store');
+      } else {
+        this.logger.error({ error: 'Unknown error' }, 'Failed to read deployment store');
+      }
       if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
         return undefined;
       }
-      this.logger.error({ error: error.message }, 'Failed to read deployment store');
       return undefined;
     }
   }
@@ -60,13 +70,18 @@ export class FileDeploymentTracker implements DeploymentTracker {
   getAllDeployments(): DeploymentInfo[] {
     try {
       const data = fsSync.readFileSync(this.storePath, 'utf-8');
-      const store: DeploymentStore = JSON.parse(data);
+      const store = JSON.parse(data) as DeploymentStore;
       return Object.values(store.deployments);
-    } catch (error: any) {
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        this.logger.error({ error: error.message }, 'Failed to read deployments');
+      } else {
+        this.logger.error({ error: 'Unknown error' }, 'Failed to read deployments');
+      }
       if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
         return [];
       }
-      this.logger.error({ error: error.message }, 'Failed to read deployments');
+      this.logger.error({ error: error instanceof Error ? error.message : 'Unknown error' }, 'Failed to read deployments');
       return [];
     }
   }
@@ -94,7 +109,7 @@ export class FileDeploymentTracker implements DeploymentTracker {
     // Synchronous for immediate allocation
     try {
       const data = fsSync.readFileSync(this.storePath, 'utf-8');
-      const store: DeploymentStore = JSON.parse(data);
+      const store = JSON.parse(data) as DeploymentStore;
 
       // Check if ports already allocated
       if (store.portAllocations[prNumber]) {
@@ -124,7 +139,12 @@ export class FileDeploymentTracker implements DeploymentTracker {
 
       this.logger.info({ prNumber, appPort, dbPort }, 'Allocated ports');
       return { appPort, dbPort };
-    } catch (error: any) {
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        this.logger.error({ error: error.message }, 'Failed to allocate ports');
+      } else {
+        this.logger.error({ error: 'Unknown error' }, 'Failed to allocate ports');
+      }
       if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
         // First deployment, create store
         const appPort = 8000 + prNumber;
@@ -157,8 +177,12 @@ export class FileDeploymentTracker implements DeploymentTracker {
       const now = new Date();
       const diffMs = now.getTime() - createdAt.getTime();
       return diffMs / (1000 * 60 * 60 * 24); // Convert to days
-    } catch (error: any) {
-      this.logger.error({ prNumber, error: error.message }, 'Failed to get deployment age');
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        this.logger.error({ prNumber, error: error.message }, 'Failed to get deployment age');
+      } else {
+        this.logger.error({ prNumber, error: 'Unknown error' }, 'Failed to get deployment age');
+      }
       return Infinity;
     }
   }

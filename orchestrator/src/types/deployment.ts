@@ -7,12 +7,12 @@ export interface DeploymentStore {
 
 export interface DeploymentTracker {
   getDeployment(prNumber: number): DeploymentInfo | undefined;
-  saveDeployment(deployment: DeploymentInfo): void;
-  deleteDeployment(prNumber: number): void;
+  saveDeployment(deployment: DeploymentInfo): Promise<void>;
+  deleteDeployment(prNumber: number): Promise<void>;
   getAllDeployments(): DeploymentInfo[];
-  updateDeploymentStatus(prNumber: number, status: PreviewStatus): void;
-  updateDeploymentComment(prNumber: number, commentId: number): void;
+  updateDeploymentStatus(prNumber: number, status: PreviewStatus): Promise<void>;
+  updateDeploymentComment(prNumber: number, commentId: number): Promise<void>;
   allocatePorts(prNumber: number): { appPort: number; dbPort: number };
-  releasePorts(prNumber: number): void;
+  releasePorts(prNumber: number): Promise<void>;
   getDeploymentAge(prNumber: number): number; // Returns age in days
 }

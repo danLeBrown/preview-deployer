@@ -51,16 +51,16 @@ export async function destroyCommand(): Promise<void> {
                 await fetch(`http://${serverIp}:3000/api/previews/${deployment.prNumber}`, {
                   method: 'DELETE',
                 });
-              } catch (error) {
+              } catch (error: unknown) {
                 // Ignore cleanup errors
               }
             }
           }
-        } catch (error) {
+        } catch (error: unknown) {
           // Ignore if orchestrator is not available
         }
       }
-    } catch (error) {
+    } catch (error: unknown) {
       // Terraform outputs not available, skip cleanup
     }
 
@@ -76,7 +76,7 @@ export async function destroyCommand(): Promise<void> {
           await github.deleteWebhook(owner, repoName, hook.id);
         }
       } catch (error: unknown) {
-        console.log(chalk.yellow(`Failed to delete webhook for ${repo}: ${error.message}`));
+        console.log(chalk.yellow(`Failed to delete webhook for ${repo}: ${error instanceof Error ? error.message : 'Unknown error'}`));
       }
     }
 

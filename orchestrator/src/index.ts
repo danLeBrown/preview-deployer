@@ -58,8 +58,12 @@ try {
   fs.mkdirSync(deploymentsDir, { recursive: true });
   fs.mkdirSync(path.dirname(deploymentsDb), { recursive: true });
   fs.mkdirSync(path.join(__dirname, '../logs'), { recursive: true });
-} catch (error: any) {
+} catch (error: unknown) {
+  if (error instanceof Error) {
   logger.error({ error: error.message }, 'Failed to create directories');
+  } else {
+    logger.error({ error: 'Unknown error' }, 'Failed to create directories');
+  }
 }
 
 // Initialize core services
@@ -111,9 +115,10 @@ app.get('/health', (_req: Request, res: Response) => {
 });
 
 // Webhook endpoint
-app.post('/webhook/github', async (req: Request, res: Response) => {
-  const signature = req.headers['x-hub-signature-256'] as string;
-  const payload = JSON.stringify(req.body);
+app.post('/webhook/github', (req: Request, res: Response) => {
+  (async () => {
+    const signature = req.headers['x-hub-signature-256'] as string;
+    const payload = JSON.stringify(req.body);
 
   // Verify signature
   if (!webhookHandler.verifySignature(payload, signature)) {
@@ -122,14 +127,19 @@ app.post('/webhook/github', async (req: Request, res: Response) => {
     return;
   }
 
-  try {
-    const webhookPayload = req.body as WebhookPayload;
-    await webhookHandler.handleWebhook(webhookPayload);
-    res.json({ status: 'ok' });
-  } catch (error: any) {
-    logger.error({ error: error.message }, 'Webhook handling failed');
-    res.status(500).json({ error: error.message });
-  }
+    try {
+      const webhookPayload = req.body as WebhookPayload;
+      await webhookHandler.handleWebhook(webhookPayload);
+      res.json({ status: 'ok' });
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        logger.error({ error: error.message }, 'Webhook handling failed');
+      } else {
+        logger.error({ error: 'Unknown error' }, 'Webhook handling failed');
+      }
+      res.status(500).json({ error: error instanceof Error ? error.message : 'Unknown error' });
+    }
+  })
 });
 
 // Admin endpoints
@@ -137,13 +147,18 @@ app.get('/api/previews', (_req: Request, res: Response) => {
   try {
     const deployments = tracker.getAllDeployments();
     res.json({ deployments });
-  } catch (error: any) {
-    logger.error({ error: error.message }, 'Failed to list deployments');
-    res.status(500).json({ error: error.message });
+  } catch (error: unknown) {
+    if (error instanceof Error) {
+      logger.error({ error: error.message }, 'Failed to list deployments');
+    } else {
+      logger.error({ error: 'Unknown error' }, 'Failed to list deployments');
+    }
+    res.status(500).json({ error: error instanceof Error ? error.message : 'Unknown error' });
   }
 });
 
-app.delete('/api/previews/:prNumber', async (req: Request, res: Response) => {
+app.delete('/api/previews/:prNumber', (req: Request, res: Response) => {
+  (async () => {
   const prNumber = parseInt(req.params.prNumber, 10);
 
   if (isNaN(prNumber)) {
@@ -163,10 +178,15 @@ app.delete('/api/previews/:prNumber', async (req: Request, res: Response) => {
     await tracker.deleteDeployment(prNumber);
 
     res.json({ status: 'ok', message: `Preview #${prNumber} cleaned up` });
-  } catch (error: any) {
-    logger.error({ prNumber, error: error.message }, 'Failed to cleanup preview');
-    res.status(500).json({ error: error.message });
+  } catch (error: unknown) {
+    if (error instanceof Error) {
+      logger.error({ prNumber, error: error.message }, 'Failed to cleanup preview');
+    } else {
+      logger.error({ prNumber, error: 'Unknown error' }, 'Failed to cleanup preview');
+    }
+    res.status(500).json({ error: error instanceof Error ? error.message : 'Unknown error' });
   }
+})
 });
 
 // Error handling middleware

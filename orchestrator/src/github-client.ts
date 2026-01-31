@@ -1,11 +1,12 @@
 import { Octokit } from '@octokit/rest';
 import { PRStatus } from './types/preview-config';
+import { Logger } from 'pino';
 
 export class GitHubClient {
   private octokit: Octokit;
-  private logger: any;
+  private logger: Logger;
 
-  constructor(token: string, logger: any) {
+  constructor(token: string, logger: Logger) {
     this.octokit = new Octokit({ auth: token });
     this.logger = logger;
   }
@@ -28,9 +29,9 @@ export class GitHubClient {
         'Posted GitHub comment'
       );
       return response.data.id;
-    } catch (error: any) {
+    } catch (error: unknown) {
       this.logger.error(
-        { owner, repo, prNumber, error: error.message },
+        { owner, repo, prNumber, error: error instanceof Error ? error.message : 'Unknown error' },
         'Failed to post GitHub comment'
       );
       throw error;
@@ -54,9 +55,9 @@ export class GitHubClient {
         { owner, repo, commentId },
         'Updated GitHub comment'
       );
-    } catch (error: any) {
+    } catch (error: unknown) {
       this.logger.error(
-        { owner, repo, commentId, error: error.message },
+        { owner, repo, commentId, error: error instanceof Error ? error.message : 'Unknown error' },
         'Failed to update GitHub comment'
       );
       throw error;
@@ -79,9 +80,9 @@ export class GitHubClient {
         return 'merged';
       }
       return response.data.state === 'open' ? 'open' : 'closed';
-    } catch (error: any) {
+    } catch (error: unknown) {
       this.logger.error(
-        { owner, repo, prNumber, error: error.message },
+        { owner, repo, prNumber, error: error instanceof Error ? error.message : 'Unknown error' },
         'Failed to check PR status'
       );
       throw error;
