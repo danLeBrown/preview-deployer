@@ -8,7 +8,7 @@ export interface TerraformOutput {
   server_ip: { value: string };
   droplet_id: { value: string };
   server_ssh_user: { value: string };
-  reserved_ip: { value: string };
+  // reserved_ip: { value: string };
 }
 
 export class TerraformWrapper {

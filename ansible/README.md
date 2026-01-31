@@ -34,12 +34,12 @@ Installs nginx, creates directory structure for preview configs, and deploys bas
 ### Orchestrator Role
 
 Deploys the orchestrator service:
-- Installs Node.js v20 LTS
-- Copies/clones orchestrator code
-- Installs dependencies and builds TypeScript
-- Creates systemd service
-- Sets up log rotation
-- Configures environment variables
+- Installs Node.js via NVM (for the deployment user)
+- When `orchestrator_source == "local"`: builds on the **controller** (your machine), then syncs source + built `dist/`; server only runs `npm install --omit=dev` (no TypeScript build on server — "build once, deploy everywhere")
+- When `orchestrator_source == "git"`: clones repo and builds on the server (requires dev deps there)
+- Creates systemd service, log rotation, and environment
+
+**Build strategy:** For local source, the playbook builds the orchestrator on the machine running Ansible (Node/npm required there), then rsync includes `dist/`. The server never runs `tsc` and only installs production dependencies. For a future "orchestrator in Docker" flow, you would build an image (multi-stage Dockerfile) and run the container on the server instead.
 
 ## Usage
 

@@ -15,29 +15,81 @@
     owner: "{{ deployment_user }}"
     group: "{{ deployment_user }}"
 
-- name: Install Node.js v20 LTS using NodeSource repository
+- name: Check if NVM is already installed
+  stat:
+    path: "/home/{{ deployment_user }}/.nvm/nvm.sh"
+  register: nvm_installed
+
+- name: Download and install nvm (only if not already installed)
   shell: |
-    curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
-    apt-get install -y nodejs
+    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash
+    \. "$HOME/.nvm/nvm.sh"
+    nvm install 24
+    nvm use 24
+    nvm alias default 24
+  become_user: "{{ deployment_user }}"
   args:
-    creates: /usr/bin/node
+    executable: /bin/bash
+  when: not nvm_installed.stat.exists
 
 - name: Verify Node.js installation
-  command: node --version
+  shell: . ~/.nvm/nvm.sh && node --version
   register: node_version
   changed_when: false
+  become_user: "{{ deployment_user }}"
+  args:
+    executable: /bin/bash
 
 - name: Display Node.js version
   debug:
     msg: "Node.js installed: {{ node_version.stdout }}"
 
-- name: Copy orchestrator source code
-  copy:
-    src: "{{ playbook_dir }}/../../orchestrator/"
-    dest: "{{ orchestrator_dir }}"
+- name: Install pnpm
+  shell: . ~/.nvm/nvm.sh && npm install -g pnpm
+  become_user: "{{ deployment_user }}"
+  args:
+    executable: /bin/bash
+
+- name: Verify pnpm installation
+  shell: . ~/.nvm/nvm.sh && pnpm --version
+  register: pnpm_version
+  changed_when: false
+  become_user: "{{ deployment_user }}"
+  args:
+    executable: /bin/bash
+
+- name: Display pnpm version
+  debug:
+    msg: "pnpm version: {{ pnpm_version.stdout }}"
+
+# Build once on controller when using local source; then sync includes dist/
+# so the server only installs prod deps and runs (no tsc on server).
+- name: Build orchestrator on controller (build once, deploy everywhere)
+  shell: pnpm install && pnpm run build
+  args:
+    chdir: "{{ playbook_dir }}/../orchestrator"
+  delegate_to: localhost
+  become: false
+  run_once: true
+  when: orchestrator_source == "local"
+
+- name: Synchronize files and exclude specific patterns
+  ansible.builtin.synchronize:
+    src: "{{ playbook_dir }}/../orchestrator/"
+    dest: "{{ orchestrator_dir }}/"
+    rsync_opts:
+      - "--exclude=.git"
+      - "--exclude=*.log"
+      - "--exclude=node_modules"
+  when: orchestrator_source == "local"
+
+- name: Set ownership of orchestrator directory after sync
+  file:
+    path: "{{ orchestrator_dir }}"
+    state: directory
     owner: "{{ deployment_user }}"
     group: "{{ deployment_user }}"
-    mode: '0755'
+    recurse: yes
   when: orchestrator_source == "local"
 
 - name: Clone orchestrator from repository
@@ -50,17 +102,20 @@
   become_user: "{{ deployment_user }}"
 
 - name: Install orchestrator dependencies
-  npm:
-    path: "{{ orchestrator_dir }}"
-    state: present
-    production: yes
-  become_user: "{{ deployment_user }}"
-
-- name: Build orchestrator TypeScript
-  shell: npm run build
+  shell: . ~/.nvm/nvm.sh && pnpm install --production
   args:
     chdir: "{{ orchestrator_dir }}"
+    executable: /bin/bash
   become_user: "{{ deployment_user }}"
+
+# Skip when local: we already built on controller and synced dist/
+- name: Build orchestrator TypeScript (git source only)
+  shell: . ~/.nvm/nvm.sh && pnpm run build
+  args:
+    chdir: "{{ orchestrator_dir }}"
+    executable: /bin/bash
+  become_user: "{{ deployment_user }}"
+  when: orchestrator_source == "git"
 
 - name: Create orchestrator environment file
   template:
