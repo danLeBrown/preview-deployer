@@ -14,7 +14,7 @@ export async function destroyCommand(): Promise<void> {
     process.exit(1);
   }
 
-  const confirmAnswer = await inquirer.prompt([
+  const confirmAnswer = await inquirer.prompt<{ confirm: boolean }>([
     {
       type: 'confirm',
       name: 'confirm',
@@ -75,7 +75,7 @@ export async function destroyCommand(): Promise<void> {
         if (hook) {
           await github.deleteWebhook(owner, repoName, hook.id);
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.log(chalk.yellow(`Failed to delete webhook for ${repo}: ${error.message}`));
       }
     }
@@ -91,7 +91,7 @@ export async function destroyCommand(): Promise<void> {
       alert_email: config.digitalocean.alert_email,
     };
 
-    const destroyConfirm = await inquirer.prompt([
+    const destroyConfirm = await inquirer.prompt<{ confirm: boolean }>([
       {
         type: 'confirm',
         name: 'confirm',

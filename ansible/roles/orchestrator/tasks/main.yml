@@ -81,6 +81,8 @@
       - "--exclude=.git"
       - "--exclude=*.log"
       - "--exclude=node_modules"
+      - "--exclude=src"
+      - "--exclude=tsconfig.json"
   when: orchestrator_source == "local"
 
 - name: Set ownership of orchestrator directory after sync
@@ -132,6 +134,14 @@
   notify:
     - reload systemd
     - restart orchestrator
+
+- name: Make logs directory
+  file:
+    path: "{{ orchestrator_dir }}/logs"
+    state: directory
+    mode: '0755'
+    owner: "{{ deployment_user }}"
+    group: "{{ deployment_user }}"
 
 - name: Set up log rotation for orchestrator
   copy:

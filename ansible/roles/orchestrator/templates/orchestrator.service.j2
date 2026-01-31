@@ -9,7 +9,7 @@ User={{ deployment_user }}
 Group={{ deployment_user }}
 WorkingDirectory={{ orchestrator_dir }}
 EnvironmentFile={{ orchestrator_dir }}/.env
-ExecStart=/usr/bin/node {{ orchestrator_dir }}/dist/index.js
+ExecStart=/bin/bash -c '. ~/.nvm/nvm.sh && exec node {{ orchestrator_dir }}/dist/index.js'
 Restart=always
 RestartSec=10
 StandardOutput=append:{{ orchestrator_dir }}/logs/orchestrator.log
@@ -19,7 +19,8 @@ StandardError=append:{{ orchestrator_dir }}/logs/orchestrator-error.log
 NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
-ProtectHome=true
+# using true here will cause the service to fail to start, so we use read-only
+ProtectHome=read-only
 ReadWritePaths={{ orchestrator_dir }} /opt/preview-deployments /etc/nginx/preview-configs
 
 [Install]

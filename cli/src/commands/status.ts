@@ -1,6 +1,8 @@
+
 import chalk from 'chalk';
 import { ConfigManager } from '../utils/config';
 import { TerraformWrapper } from '../utils/terraform';
+import * as path from 'path';
 
 export async function statusCommand(): Promise<void> {
   console.log(chalk.blue('Checking preview-deployer status...\n'));
@@ -11,7 +13,7 @@ export async function statusCommand(): Promise<void> {
     process.exit(1);
   }
 
-  const terraformDir = require('path').join(process.cwd(), 'terraform');
+  const terraformDir = path.join(process.cwd(), 'terraform');
   const terraform = new TerraformWrapper(terraformDir);
 
   try {
@@ -43,12 +45,12 @@ export async function statusCommand(): Promise<void> {
           }
         }
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.log(chalk.yellow('\nOrchestrator Status:'));
-      console.log(`  Unable to connect: ${error.message}`);
+      console.log(`  Unable to connect: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
-  } catch (error: any) {
-    console.error(chalk.red(`Failed to get status: ${error.message}`));
+  } catch (error: unknown) {
+    console.error(chalk.red(`Failed to get status: ${error instanceof Error ? error.message : 'Unknown error'}`));
     console.log(chalk.yellow('Make sure Terraform has been applied.'));
     process.exit(1);
   }

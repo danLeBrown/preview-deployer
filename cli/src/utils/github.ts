@@ -30,15 +30,15 @@ export class GitHubWebhookManager {
 
       console.log(chalk.green(`Webhook created for ${owner}/${repo}`));
       return response.data.id;
-    } catch (error: any) {
-      if (error.status === 422 && error.message.includes('already exists')) {
+    } catch (error: unknown) {
+      if (error instanceof Error && error.message.includes('already exists')) {
         console.log(chalk.yellow(`Webhook already exists for ${owner}/${repo}`));
         // Try to find existing webhook
         const hooks = await this.octokit.rest.repos.listWebhooks({ owner, repo });
         const existingHook = hooks.data.find((hook) => hook.config.url === webhookUrl);
         return existingHook?.id || 0;
       }
-      console.error(chalk.red(`Failed to create webhook: ${error.message}`));
+      console.error(chalk.red(`Failed to create webhook: ${error instanceof Error ? error.message : 'Unknown error'}`));
       throw error;
     }
   }
@@ -51,18 +51,18 @@ export class GitHubWebhookManager {
         hook_id: hookId,
       });
       console.log(chalk.green(`Webhook deleted for ${owner}/${repo}`));
-    } catch (error: any) {
-      console.error(chalk.red(`Failed to delete webhook: ${error.message}`));
+    } catch (error: unknown) {
+      console.error(chalk.red(`Failed to delete webhook: ${error instanceof Error ? error.message : 'Unknown error'}`));
       throw error;
     }
   }
 
-  async listWebhooks(owner: string, repo: string): Promise<any[]> {
+  async listWebhooks(owner: string, repo: string): Promise<{ id: number; config: { url: string } }[]> {
     try {
       const response = await this.octokit.rest.repos.listWebhooks({ owner, repo });
-      return response.data;
-    } catch (error: any) {
-      console.error(chalk.red(`Failed to list webhooks: ${error.message}`));
+      return response.data as { id: number; config: { url: string } }[];
+    } catch (error: unknown) {
+      console.error(chalk.red(`Failed to list webhooks: ${error instanceof Error ? error.message : 'Unknown error'}`));
       throw error;
     }
   }
