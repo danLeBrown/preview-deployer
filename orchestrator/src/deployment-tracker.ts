@@ -18,11 +18,8 @@ export class FileDeploymentTracker implements DeploymentTracker {
       const data = await fs.readFile(this.storePath, 'utf-8');
       return JSON.parse(data) as DeploymentStore;
     } catch (error: unknown) {
-      if (error instanceof Error) {
-        this.logger.error({ error: error.message }, 'Failed to read deployment store');
-      } else {
-        this.logger.error({ error: 'Unknown error' }, 'Failed to read deployment store');
-      }
+      this.logger.error({ error: error instanceof Error ? error.message : 'Unknown error' }, 'Failed to read deployment store');
+        
       if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
         return { deployments: {}, portAllocations: {} };
       }
@@ -41,11 +38,8 @@ export class FileDeploymentTracker implements DeploymentTracker {
       const store = JSON.parse(data) as DeploymentStore;
       return store.deployments[prNumber];
     } catch (error: unknown) {
-      if (error instanceof Error) {
-        this.logger.error({ error: error.message }, 'Failed to read deployment store');
-      } else {
-        this.logger.error({ error: 'Unknown error' }, 'Failed to read deployment store');
-      }
+      this.logger.error({ error: error instanceof Error ? error.message : 'Unknown error' }, 'Failed to read deployment store');
+      
       if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
         return undefined;
       }
@@ -73,14 +67,6 @@ export class FileDeploymentTracker implements DeploymentTracker {
       const store = JSON.parse(data) as DeploymentStore;
       return Object.values(store.deployments);
     } catch (error: unknown) {
-      if (error instanceof Error) {
-        this.logger.error({ error: error.message }, 'Failed to read deployments');
-      } else {
-        this.logger.error({ error: 'Unknown error' }, 'Failed to read deployments');
-      }
-      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-        return [];
-      }
       this.logger.error({ error: error instanceof Error ? error.message : 'Unknown error' }, 'Failed to read deployments');
       return [];
     }
@@ -178,11 +164,7 @@ export class FileDeploymentTracker implements DeploymentTracker {
       const diffMs = now.getTime() - createdAt.getTime();
       return diffMs / (1000 * 60 * 60 * 24); // Convert to days
     } catch (error: unknown) {
-      if (error instanceof Error) {
-        this.logger.error({ prNumber, error: error.message }, 'Failed to get deployment age');
-      } else {
-        this.logger.error({ prNumber, error: 'Unknown error' }, 'Failed to get deployment age');
-      }
+        this.logger.error({ prNumber, error: error instanceof Error ? error.message : 'Unknown error' }, 'Failed to get deployment age');
       return Infinity;
     }
   }

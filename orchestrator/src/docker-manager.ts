@@ -1,4 +1,4 @@
-import Docker from 'dockerode';
+import Docker, { ContainerInspectInfo } from 'dockerode';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { exec } from 'child_process';
@@ -154,15 +154,19 @@ export class DockerManager {
     }
   }
 
-  async getPreviewStatus(prNumber: number): Promise<'running' | 'stopped' | 'failed'> {
+  async getPreviewStatus(prNumber: number): Promise<'running' | 'stopped' | 'failed'> {``
     try {
       const containerName = `pr-${prNumber}-app`;
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
       const container = this.docker.getContainer(containerName);
-      const info = await container.inspect();
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+      const info = await container.inspect() as unknown as ContainerInspectInfo;
 
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       if (info.State.Running) {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
         return 'running';
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       } else if (info.State.Status === 'exited' && info.State.ExitCode === 0) {
         return 'stopped';
       } else {
@@ -186,7 +190,7 @@ export class DockerManager {
       } catch {
         // Check package.json for NestJS
         try {
-          const packageJson = JSON.parse(await fs.readFile(packageJsonPath, 'utf-8'));
+          const packageJson = JSON.parse(await fs.readFile(packageJsonPath, 'utf-8')) as unknown as { dependencies: Record<string, string>; devDependencies: Record<string, string> };
           if (packageJson.dependencies?.['@nestjs/core'] || packageJson.devDependencies?.['@nestjs/core']) {
             return 'nestjs';
           }

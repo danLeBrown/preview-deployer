@@ -1,12 +1,12 @@
-FROM node:20-alpine
+FROM node:24.13-alpine
 
 WORKDIR /app
 
 # Copy package files
-COPY package.json package-lock.json* ./
+COPY package.json pnpm-lock.yaml ./
 
 # Install dependencies
-RUN npm ci --production
+RUN pnpm ci --production
 
 # Copy source code
 COPY dist ./dist
