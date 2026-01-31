@@ -1,11 +1,12 @@
 import * as crypto from 'crypto';
-import { WebhookPayload, PreviewConfig } from './types/preview-config';
-import { GitHubClient } from './github-client';
+import { Logger } from 'pino';
+
 import { DockerManager } from './docker-manager';
+import { GitHubClient } from './github-client';
 import { NginxManager } from './nginx-manager';
 import { DeploymentTracker } from './types/deployment';
+import { PreviewConfig, WebhookPayload } from './types/preview-config';
 import { DeploymentInfo } from './types/preview-config';
-import { Logger } from 'pino';
 
 export class WebhookHandler {
   private webhookSecret: string;
@@ -23,7 +24,7 @@ export class WebhookHandler {
     dockerManager: DockerManager,
     nginxManager: NginxManager,
     tracker: DeploymentTracker,
-    logger: Logger
+    logger: Logger,
   ) {
     this.webhookSecret = webhookSecret;
     this.allowedRepos = allowedRepos;
@@ -53,7 +54,10 @@ export class WebhookHandler {
   validateRepository(repoFullName: string): boolean {
     const isAllowed = this.allowedRepos.includes(repoFullName);
     if (!isAllowed) {
-      this.logger.warn({ repoFullName, allowedRepos: this.allowedRepos }, 'Repository not in allowed list');
+      this.logger.warn(
+        { repoFullName, allowedRepos: this.allowedRepos },
+        'Repository not in allowed list',
+      );
     }
     return isAllowed;
   }
@@ -68,10 +72,7 @@ export class WebhookHandler {
       throw new Error(`Repository ${repoFullName} is not in the allowed list`);
     }
 
-    this.logger.info(
-      { action, repoFullName, prNumber },
-      'Processing webhook'
-    );
+    this.logger.info({ action, repoFullName, prNumber }, 'Processing webhook');
 
     try {
       switch (action) {
@@ -90,8 +91,13 @@ export class WebhookHandler {
       }
     } catch (error: unknown) {
       this.logger.error(
-        { action, repoFullName, prNumber, error: error instanceof Error ? error.message : 'Unknown error' },
-        'Webhook handling failed'
+        {
+          action,
+          repoFullName,
+          prNumber,
+          error: error instanceof Error ? error.message : 'Unknown error',
+        },
+        'Webhook handling failed',
       );
 
       // Post failure comment to GitHub
@@ -101,12 +107,12 @@ export class WebhookHandler {
           repository.owner.login,
           repository.name,
           prNumber,
-          comment
+          comment,
         );
       } catch (commentError: unknown) {
         this.logger.error(
           { error: commentError instanceof Error ? commentError.message : 'Unknown error' },
-          'Failed to post failure comment'
+          'Failed to post failure comment',
         );
       }
 
@@ -136,10 +142,13 @@ export class WebhookHandler {
         repoOwner,
         repoName,
         prNumber,
-        buildingComment
+        buildingComment,
       );
     } catch (error: unknown) {
-      this.logger.error({ error: error instanceof Error ? error.message : 'Unknown error' }, 'Failed to post building comment');
+      this.logger.error(
+        { error: error instanceof Error ? error.message : 'Unknown error' },
+        'Failed to post building comment',
+      );
       // Continue with deployment even if comment fails
     }
 
@@ -181,7 +190,10 @@ export class WebhookHandler {
         const successComment = GitHubClient.formatComment('success', url);
         await this.githubClient.updateComment(repoOwner, repoName, commentId, successComment);
       } catch (error: unknown) {
-        this.logger.error({ error: error instanceof Error ? error.message : 'Unknown error' }, 'Failed to update comment');
+        this.logger.error(
+          { error: error instanceof Error ? error.message : 'Unknown error' },
+          'Failed to update comment',
+        );
       }
     }
 
@@ -208,7 +220,10 @@ export class WebhookHandler {
         const buildingComment = GitHubClient.formatComment('building');
         await this.githubClient.updateComment(repoOwner, repoName, commentId, buildingComment);
       } catch (error: unknown) {
-        this.logger.error({ error: error instanceof Error ? error.message : 'Unknown error' }, 'Failed to update building comment');
+        this.logger.error(
+          { error: error instanceof Error ? error.message : 'Unknown error' },
+          'Failed to update building comment',
+        );
       }
     }
 
@@ -227,7 +242,10 @@ export class WebhookHandler {
         const successComment = GitHubClient.formatComment('success', deployment.url);
         await this.githubClient.updateComment(repoOwner, repoName, commentId, successComment);
       } catch (error: unknown) {
-        this.logger.error({ error: error instanceof Error ? error.message : 'Unknown error' }, 'Failed to update comment');
+        this.logger.error(
+          { error: error instanceof Error ? error.message : 'Unknown error' },
+          'Failed to update comment',
+        );
       }
     }
 

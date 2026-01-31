@@ -1,9 +1,10 @@
+import chalk from 'chalk';
 import * as inquirer from 'inquirer';
 import * as path from 'path';
-import chalk from 'chalk';
+
 import { ConfigManager } from '../utils/config';
-import { TerraformWrapper } from '../utils/terraform';
 import { GitHubWebhookManager } from '../utils/github';
+import { TerraformWrapper } from '../utils/terraform';
 
 export async function destroyCommand(): Promise<void> {
   console.log(chalk.red('⚠️  This will destroy all infrastructure and preview deployments!\n'));
@@ -44,8 +45,12 @@ export async function destroyCommand(): Promise<void> {
         try {
           const previewsResponse = await fetch(`http://${serverIp}:3000/api/previews`);
           if (previewsResponse.ok) {
-            const previews = await previewsResponse.json() as { deployments: Array<{ prNumber: number }> };
-            console.log(chalk.blue(`Cleaning up ${previews.deployments.length} preview deployments...`));
+            const previews = (await previewsResponse.json()) as {
+              deployments: Array<{ prNumber: number }>;
+            };
+            console.log(
+              chalk.blue(`Cleaning up ${previews.deployments.length} preview deployments...`),
+            );
             for (const deployment of previews.deployments) {
               try {
                 await fetch(`http://${serverIp}:3000/api/previews/${deployment.prNumber}`, {
@@ -76,7 +81,11 @@ export async function destroyCommand(): Promise<void> {
           await github.deleteWebhook(owner, repoName, hook.id);
         }
       } catch (error: unknown) {
-        console.log(chalk.yellow(`Failed to delete webhook for ${repo}: ${error instanceof Error ? error.message : 'Unknown error'}`));
+        console.log(
+          chalk.yellow(
+            `Failed to delete webhook for ${repo}: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          ),
+        );
       }
     }
 
@@ -107,7 +116,9 @@ export async function destroyCommand(): Promise<void> {
       console.log(chalk.yellow('Destroy cancelled.'));
     }
   } catch (error: unknown) {
-    console.error(chalk.red(`Destroy failed: ${error instanceof Error ? error.message : 'Unknown error'}`));
+    console.error(
+      chalk.red(`Destroy failed: ${error instanceof Error ? error.message : 'Unknown error'}`),
+    );
     process.exit(1);
   }
 }

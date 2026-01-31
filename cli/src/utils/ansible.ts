@@ -1,8 +1,8 @@
+import chalk from 'chalk';
 import { exec } from 'child_process';
-import { promisify } from 'util';
 import * as fs from 'fs';
 import * as path from 'path';
-import chalk from 'chalk';
+import { promisify } from 'util';
 
 const execAsync = promisify(exec);
 
@@ -36,7 +36,7 @@ ${serverIp} ansible_user=root${keyArg}
         `ansible-playbook -i ${inventoryPath} playbook.yml ${varArgs}`,
         {
           cwd: this.ansibleDir,
-        }
+        },
       );
 
       if (stdout) {
@@ -48,7 +48,7 @@ ${serverIp} ansible_user=root${keyArg}
     } catch (error: unknown) {
       console.error(
         chalk.red('Ansible playbook failed:'),
-        error instanceof Error ? error.message : 'Unknown error'
+        error instanceof Error ? error.message : 'Unknown error',
       );
       if (
         'stderr' in (error as Record<string, unknown>) &&

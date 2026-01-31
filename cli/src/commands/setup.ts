@@ -1,16 +1,13 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-var-requires */
-/* eslint-disable @typescript-eslint/no-unsafe-call */
-/* eslint-disable @typescript-eslint/no-unsafe-return */
-/* eslint-disable @typescript-eslint/no-unsafe-argument */
-import * as inquirer from 'inquirer';
-import * as path from 'path';
 import chalk from 'chalk';
-import { ConfigManager } from '../utils/config';
-import { TerraformWrapper } from '../utils/terraform';
+import * as fs from 'fs';
+import * as inquirer from 'inquirer';
+import * as os from 'os';
+import * as path from 'path';
+
 import { AnsibleWrapper } from '../utils/ansible';
+import { ConfigManager } from '../utils/config';
 import { GitHubWebhookManager } from '../utils/github';
+import { TerraformWrapper } from '../utils/terraform';
 
 export async function setupCommand(): Promise<void> {
   console.log(chalk.blue('Setting up preview-deployer infrastructure...\n'));
@@ -29,7 +26,7 @@ export async function setupCommand(): Promise<void> {
   }
 
   // Get SSH public key
-  const sshKeyAnswers = await inquirer.prompt<{ sshPublicKey: string, sshPrivateKeyPath: string }>([
+  const sshKeyAnswers = await inquirer.prompt<{ sshPublicKey: string; sshPrivateKeyPath: string }>([
     {
       type: 'input',
       name: 'sshPublicKey',
@@ -40,8 +37,8 @@ export async function setupCommand(): Promise<void> {
         if (input.startsWith('ssh-')) {
           return true; // Pasted key
         }
-        const keyPath = input.replace('~', require('os').homedir());
-        return require('fs').existsSync(keyPath) || 'SSH key file not found';
+        const keyPath = input.replace('~', os.homedir());
+        return fs.existsSync(keyPath) || 'SSH key file not found';
       },
     },
     {
@@ -53,8 +50,8 @@ export async function setupCommand(): Promise<void> {
         if (input.startsWith('ssh-')) {
           return 'Only the path to the key file is allowed';
         }
-        const keyPath = input.replace('~', require('os').homedir());
-        return require('fs').existsSync(keyPath) || `SSH key file not found: ${keyPath}`;
+        const keyPath = input.replace('~', os.homedir());
+        return fs.existsSync(keyPath) || `SSH key file not found: ${keyPath}`;
       },
     },
   ]);
@@ -63,12 +60,12 @@ export async function setupCommand(): Promise<void> {
   if (sshKeyAnswers.sshPublicKey.startsWith('ssh-')) {
     sshPublicKey = sshKeyAnswers.sshPublicKey;
   } else {
-    const keyPath = sshKeyAnswers.sshPublicKey.replace('~', require('os').homedir());
-    sshPublicKey = require('fs').readFileSync(keyPath, 'utf-8').trim();
+    const keyPath = sshKeyAnswers.sshPublicKey.replace('~', os.homedir());
+    sshPublicKey = fs.readFileSync(keyPath, 'utf-8').trim();
   }
 
-  const sshPrivateKeyPath = sshKeyAnswers.sshPrivateKeyPath
- 
+  const sshPrivateKeyPath = sshKeyAnswers.sshPrivateKeyPath;
+
   // Confirm Terraform apply
   const confirmAnswer = await inquirer.prompt<{ confirm: boolean }>([
     {
@@ -169,7 +166,9 @@ export async function setupCommand(): Promise<void> {
     console.log('2. Check the PR comments for the preview URL');
     console.log('3. Run "preview status" to see active deployments');
   } catch (error: unknown) {
-    console.error(chalk.red(`\nSetup failed: ${error instanceof Error ? error.message : 'Unknown error'}`));
+    console.error(
+      chalk.red(`\nSetup failed: ${error instanceof Error ? error.message : 'Unknown error'}`),
+    );
     process.exit(1);
   }
 }

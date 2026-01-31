@@ -1,9 +1,10 @@
-import { DeploymentTracker } from './types/deployment';
-import { GitHubClient } from './github-client';
-import { DockerManager } from './docker-manager';
-import { NginxManager } from './nginx-manager';
-import { DeploymentInfo } from './types/preview-config';
 import { Logger } from 'pino';
+
+import { DockerManager } from './docker-manager';
+import { GitHubClient } from './github-client';
+import { NginxManager } from './nginx-manager';
+import { DeploymentTracker } from './types/deployment';
+import { DeploymentInfo } from './types/preview-config';
 
 export class CleanupService {
   private tracker: DeploymentTracker;
@@ -20,7 +21,7 @@ export class CleanupService {
     dockerManager: DockerManager,
     nginxManager: NginxManager,
     ttlDays: number,
-    logger: Logger
+    logger: Logger,
   ) {
     this.tracker = tracker;
     this.githubClient = githubClient;
@@ -30,12 +31,12 @@ export class CleanupService {
     this.logger = logger;
   }
 
-  startScheduledCleanup(intervalHours: number = 6): void {
+  startScheduledCleanup(intervalHours = 6): void {
     // Run cleanup immediately on startup
     this.cleanupStaleDeployments(this.ttlDays).catch((error) => {
       this.logger.error(
         { error: error instanceof Error ? error.message : 'Unknown error' },
-        'Initial cleanup failed'
+        'Initial cleanup failed',
       );
     });
 
@@ -45,7 +46,7 @@ export class CleanupService {
       this.cleanupStaleDeployments(this.ttlDays).catch((error) => {
         this.logger.error(
           { error: error instanceof Error ? error.message : 'Unknown error' },
-          'Scheduled cleanup failed'
+          'Scheduled cleanup failed',
         );
       });
     }, intervalMs);
@@ -77,7 +78,7 @@ export class CleanupService {
           const prStatus = await this.githubClient.checkPRStatus(
             deployment.repoOwner,
             deployment.repoName,
-            deployment.prNumber
+            deployment.prNumber,
           );
           isPRClosed = prStatus !== 'open';
         } catch (error: unknown) {
@@ -86,14 +87,14 @@ export class CleanupService {
               prNumber: deployment.prNumber,
               error: error instanceof Error ? error.message : 'Unknown error',
             },
-            'Failed to check PR status, assuming open'
+            'Failed to check PR status, assuming open',
           );
         }
 
         if (isStale || isPRClosed) {
           this.logger.info(
             { prNumber: deployment.prNumber, age: age.toFixed(2), isStale, isPRClosed },
-            'Cleaning up deployment'
+            'Cleaning up deployment',
           );
 
           await this.cleanupDeployment(deployment);
@@ -104,7 +105,7 @@ export class CleanupService {
             prNumber: deployment.prNumber,
             error: error instanceof Error ? error.message : 'Unknown error',
           },
-          'Failed to cleanup deployment'
+          'Failed to cleanup deployment',
         );
       }
     }
@@ -129,7 +130,7 @@ export class CleanupService {
     } catch (error: unknown) {
       this.logger.error(
         { prNumber, error: error instanceof Error ? error.message : 'Unknown error' },
-        'Failed to cleanup deployment'
+        'Failed to cleanup deployment',
       );
       throw error;
     }

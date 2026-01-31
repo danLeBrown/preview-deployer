@@ -1,6 +1,6 @@
+import chalk from 'chalk';
 import { exec } from 'child_process';
 import { promisify } from 'util';
-import chalk from 'chalk';
 
 const execAsync = promisify(exec);
 
@@ -24,7 +24,10 @@ export class TerraformWrapper {
       const { stdout } = await execAsync('terraform init', { cwd: this.terraformDir });
       console.log(stdout);
     } catch (error: unknown) {
-      console.error(chalk.red('Terraform init failed:'), error instanceof Error ? error.message : 'Unknown error');
+      console.error(
+        chalk.red('Terraform init failed:'),
+        error instanceof Error ? error.message : 'Unknown error',
+      );
       throw error;
     }
   }
@@ -41,12 +44,15 @@ export class TerraformWrapper {
       });
       return stdout;
     } catch (error: unknown) {
-      console.error(chalk.red('Terraform plan failed:'), error instanceof Error ? error.message : 'Unknown error');
+      console.error(
+        chalk.red('Terraform plan failed:'),
+        error instanceof Error ? error.message : 'Unknown error',
+      );
       throw error;
     }
   }
 
-  async apply(variables: Record<string, string>, autoApprove: boolean = false): Promise<void> {
+  async apply(variables: Record<string, string>, autoApprove = false): Promise<void> {
     console.log(chalk.blue('Applying Terraform changes...'));
     const varArgs = Object.entries(variables)
       .map(([key, value]) => `-var "${key}=${value}"`)
@@ -59,12 +65,15 @@ export class TerraformWrapper {
       });
       console.log(stdout);
     } catch (error: unknown) {
-      console.error(chalk.red('Terraform apply failed:'), error instanceof Error ? error.message : 'Unknown error');
+      console.error(
+        chalk.red('Terraform apply failed:'),
+        error instanceof Error ? error.message : 'Unknown error',
+      );
       throw error;
     }
   }
 
-  async destroy(variables: Record<string, string>, autoApprove: boolean = false): Promise<void> {
+  async destroy(variables: Record<string, string>, autoApprove = false): Promise<void> {
     console.log(chalk.yellow('Destroying Terraform infrastructure...'));
     const varArgs = Object.entries(variables)
       .map(([key, value]) => `-var "${key}=${value}"`)
@@ -77,7 +86,10 @@ export class TerraformWrapper {
       });
       console.log(stdout);
     } catch (error: unknown) {
-      console.error(chalk.red('Terraform destroy failed:'), error instanceof Error ? error.message : 'Unknown error');
+      console.error(
+        chalk.red('Terraform destroy failed:'),
+        error instanceof Error ? error.message : 'Unknown error',
+      );
       throw error;
     }
   }
@@ -89,18 +101,23 @@ export class TerraformWrapper {
       });
       return JSON.parse(stdout) as TerraformOutput;
     } catch (error: unknown) {
-      console.error(chalk.red('Failed to get Terraform outputs:'), error instanceof Error ? error.message : 'Unknown error');
+      console.error(
+        chalk.red('Failed to get Terraform outputs:'),
+        error instanceof Error ? error.message : 'Unknown error',
+      );
       throw error;
     }
   }
 
-  async waitForDropletReady(sshPrivateKey: string, ip: string, maxAttempts: number = 30): Promise<void> {
+  async waitForDropletReady(sshPrivateKey: string, ip: string, maxAttempts = 30): Promise<void> {
     console.log(chalk.blue(`Waiting for droplet to be ready (${ip})...`));
     const delay = 5000; // 5 seconds
 
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
-        const { stdout } = await execAsync(`ssh -i ${sshPrivateKey} -o ConnectTimeout=5 -o StrictHostKeyChecking=no root@${ip} "echo ready"`);
+        const { stdout } = await execAsync(
+          `ssh -i ${sshPrivateKey} -o ConnectTimeout=5 -o StrictHostKeyChecking=no root@${ip} "echo ready"`,
+        );
         // const { stdout } = await execAsync(`telnet ${ip} 22`);
         if (stdout.trim() === 'ready') {
           console.log(chalk.green('Droplet is ready!'));

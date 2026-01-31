@@ -1,12 +1,13 @@
+import { exec } from 'child_process';
 import Docker, { ContainerInspectInfo } from 'dockerode';
 import * as fs from 'fs/promises';
-import * as path from 'path';
-import { exec } from 'child_process';
-import { promisify } from 'util';
 import * as Handlebars from 'handlebars';
-import { PreviewConfig, Framework } from './types/preview-config';
-import { DeploymentTracker } from './types/deployment';
+import * as path from 'path';
 import { Logger } from 'pino';
+import { promisify } from 'util';
+
+import { DeploymentTracker } from './types/deployment';
+import { Framework, PreviewConfig } from './types/preview-config';
 
 const execAsync = promisify(exec);
 
@@ -21,7 +22,7 @@ export class DockerManager {
     deploymentsDir: string,
     templatesDir: string,
     tracker: DeploymentTracker,
-    logger: Logger
+    logger: Logger,
   ) {
     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
     this.docker = new Docker();
@@ -59,7 +60,7 @@ export class DockerManager {
         appPort,
         dbPort,
         framework,
-        workDir
+        workDir,
       );
 
       // Build and start containers
@@ -78,14 +79,20 @@ export class DockerManager {
       return { url, appPort };
     } catch (error: unknown) {
       this.logger.error(
-        { prNumber: config.prNumber, error: error instanceof Error ? error.message : 'Unknown error' },
-        'Failed to deploy preview'
+        {
+          prNumber: config.prNumber,
+          error: error instanceof Error ? error.message : 'Unknown error',
+        },
+        'Failed to deploy preview',
       );
       // Cleanup on failure
       await this.cleanupPreview(config.prNumber).catch((cleanupError) => {
         this.logger.error(
-          { prNumber: config.prNumber, error: cleanupError instanceof Error ? cleanupError.message : 'Unknown error' },
-          'Failed to cleanup after deployment failure'
+          {
+            prNumber: config.prNumber,
+            error: cleanupError instanceof Error ? cleanupError.message : 'Unknown error',
+          },
+          'Failed to cleanup after deployment failure',
         );
       });
       throw error;
@@ -119,7 +126,7 @@ export class DockerManager {
     } catch (error: unknown) {
       this.logger.error(
         { prNumber, error: error instanceof Error ? error.message : 'Unknown error' },
-        'Failed to update preview'
+        'Failed to update preview',
       );
       throw error;
     }
@@ -148,19 +155,18 @@ export class DockerManager {
     } catch (error: unknown) {
       this.logger.error(
         { prNumber, error: error instanceof Error ? error.message : 'Unknown error' },
-        'Failed to cleanup preview'
+        'Failed to cleanup preview',
       );
       throw error;
     }
   }
 
-  async getPreviewStatus(prNumber: number): Promise<'running' | 'stopped' | 'failed'> {``
+  async getPreviewStatus(prNumber: number): Promise<'running' | 'stopped' | 'failed'> {
+    ``;
     try {
       const containerName = `pr-${prNumber}-app`;
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
       const container = this.docker.getContainer(containerName);
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-      const info = await container.inspect() as unknown as ContainerInspectInfo;
+      const info = (await container.inspect()) as unknown as ContainerInspectInfo;
 
       // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       if (info.State.Running) {
@@ -169,11 +175,13 @@ export class DockerManager {
         // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       } else if (info.State.Status === 'exited' && info.State.ExitCode === 0) {
         return 'stopped';
-      } else {
-        return 'failed';
       }
+      return 'failed';
     } catch (error: unknown) {
-      this.logger.warn({ prNumber, error: error instanceof Error ? error.message : 'Unknown error' }, 'Failed to get container status');
+      this.logger.warn(
+        { prNumber, error: error instanceof Error ? error.message : 'Unknown error' },
+        'Failed to get container status',
+      );
       return 'stopped';
     }
   }
@@ -190,8 +198,16 @@ export class DockerManager {
       } catch {
         // Check package.json for NestJS
         try {
-          const packageJson = JSON.parse(await fs.readFile(packageJsonPath, 'utf-8')) as unknown as { dependencies: Record<string, string>; devDependencies: Record<string, string> };
-          if (packageJson.dependencies?.['@nestjs/core'] || packageJson.devDependencies?.['@nestjs/core']) {
+          const packageJson = JSON.parse(
+            await fs.readFile(packageJsonPath, 'utf-8'),
+          ) as unknown as {
+            dependencies: Record<string, string>;
+            devDependencies: Record<string, string>;
+          };
+          if (
+            packageJson.dependencies['@nestjs/core'] ||
+            packageJson.devDependencies['@nestjs/core']
+          ) {
             return 'nestjs';
           }
         } catch {
@@ -210,7 +226,10 @@ export class DockerManager {
         return 'nestjs';
       }
     } catch (error: unknown) {
-      this.logger.error({ workDir, error: error instanceof Error ? error.message : 'Unknown error' }, 'Failed to detect framework');
+      this.logger.error(
+        { workDir, error: error instanceof Error ? error.message : 'Unknown error' },
+        'Failed to detect framework',
+      );
       return 'nestjs'; // Default
     }
   }
@@ -220,9 +239,10 @@ export class DockerManager {
     appPort: number,
     dbPort: number,
     framework: Framework,
-    workDir: string
+    workDir: string,
   ): Promise<string> {
-    const templateName = framework === 'nestjs' ? 'docker-compose.nestjs.yml.hbs' : 'docker-compose.go.yml.hbs';
+    const templateName =
+      framework === 'nestjs' ? 'docker-compose.nestjs.yml.hbs' : 'docker-compose.go.yml.hbs';
     const templatePath = path.join(this.templatesDir, templateName);
     const templateContent = await fs.readFile(templatePath, 'utf-8');
     const template = Handlebars.compile(templateContent);
@@ -245,14 +265,20 @@ export class DockerManager {
 
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
-        const response = await fetch(healthUrl, { method: 'GET', signal: AbortSignal.timeout(2000) });
+        const response = await fetch(healthUrl, {
+          method: 'GET',
+          signal: AbortSignal.timeout(2000),
+        });
         if (response.ok) {
           this.logger.info({ port, attempt }, 'Health check passed');
           return true;
         }
       } catch (error: unknown) {
         // Ignore errors and retry
-        this.logger.debug({ port, attempt, error: error instanceof Error ? error.message : 'Unknown error' }, 'Health check attempt failed');
+        this.logger.debug(
+          { port, attempt, error: error instanceof Error ? error.message : 'Unknown error' },
+          'Health check attempt failed',
+        );
       }
 
       if (attempt < maxAttempts) {

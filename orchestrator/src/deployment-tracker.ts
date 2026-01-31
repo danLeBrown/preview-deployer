@@ -1,8 +1,9 @@
-import * as fs from 'fs/promises';
 import * as fsSync from 'fs';
-import { DeploymentInfo, PreviewStatus } from './types/preview-config';
-import { DeploymentStore, DeploymentTracker } from './types/deployment';
+import * as fs from 'fs/promises';
 import { Logger } from 'pino';
+
+import { DeploymentStore, DeploymentTracker } from './types/deployment';
+import { DeploymentInfo, PreviewStatus } from './types/preview-config';
 
 export class FileDeploymentTracker implements DeploymentTracker {
   private storePath: string;
@@ -18,8 +19,11 @@ export class FileDeploymentTracker implements DeploymentTracker {
       const data = await fs.readFile(this.storePath, 'utf-8');
       return JSON.parse(data) as DeploymentStore;
     } catch (error: unknown) {
-      this.logger.error({ error: error instanceof Error ? error.message : 'Unknown error' }, 'Failed to read deployment store');
-        
+      this.logger.error(
+        { error: error instanceof Error ? error.message : 'Unknown error' },
+        'Failed to read deployment store',
+      );
+
       if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
         return { deployments: {}, portAllocations: {} };
       }
@@ -38,8 +42,11 @@ export class FileDeploymentTracker implements DeploymentTracker {
       const store = JSON.parse(data) as DeploymentStore;
       return store.deployments[prNumber];
     } catch (error: unknown) {
-      this.logger.error({ error: error instanceof Error ? error.message : 'Unknown error' }, 'Failed to read deployment store');
-      
+      this.logger.error(
+        { error: error instanceof Error ? error.message : 'Unknown error' },
+        'Failed to read deployment store',
+      );
+
       if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
         return undefined;
       }
@@ -67,13 +74,17 @@ export class FileDeploymentTracker implements DeploymentTracker {
       const store = JSON.parse(data) as DeploymentStore;
       return Object.values(store.deployments);
     } catch (error: unknown) {
-      this.logger.error({ error: error instanceof Error ? error.message : 'Unknown error' }, 'Failed to read deployments');
+      this.logger.error(
+        { error: error instanceof Error ? error.message : 'Unknown error' },
+        'Failed to read deployments',
+      );
       return [];
     }
   }
 
   async updateDeploymentStatus(prNumber: number, status: PreviewStatus): Promise<void> {
     const store = await this.loadStore();
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (store.deployments[prNumber]) {
       store.deployments[prNumber].status = status;
       store.deployments[prNumber].updatedAt = new Date().toISOString();
@@ -84,6 +95,7 @@ export class FileDeploymentTracker implements DeploymentTracker {
 
   async updateDeploymentComment(prNumber: number, commentId: number): Promise<void> {
     const store = await this.loadStore();
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (store.deployments[prNumber]) {
       store.deployments[prNumber].commentId = commentId;
       await this.saveStore(store);
@@ -98,6 +110,7 @@ export class FileDeploymentTracker implements DeploymentTracker {
       const store = JSON.parse(data) as DeploymentStore;
 
       // Check if ports already allocated
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       if (store.portAllocations[prNumber]) {
         return store.portAllocations[prNumber];
       }
@@ -164,7 +177,10 @@ export class FileDeploymentTracker implements DeploymentTracker {
       const diffMs = now.getTime() - createdAt.getTime();
       return diffMs / (1000 * 60 * 60 * 24); // Convert to days
     } catch (error: unknown) {
-        this.logger.error({ prNumber, error: error instanceof Error ? error.message : 'Unknown error' }, 'Failed to get deployment age');
+      this.logger.error(
+        { prNumber, error: error instanceof Error ? error.message : 'Unknown error' },
+        'Failed to get deployment age',
+      );
       return Infinity;
     }
   }

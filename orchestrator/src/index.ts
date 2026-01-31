@@ -1,13 +1,14 @@
-import express, { Request, Response, NextFunction } from 'express';
 import * as dotenv from 'dotenv';
+import express, { NextFunction, Request, Response } from 'express';
 import pino from 'pino';
-import { GitHubClient } from './github-client';
-import { DockerManager } from './docker-manager';
-import { NginxManager } from './nginx-manager';
-import { WebhookHandler } from './webhook-handler';
+
 import { CleanupService } from './cleanup-service';
 import { FileDeploymentTracker } from './deployment-tracker';
+import { DockerManager } from './docker-manager';
+import { GitHubClient } from './github-client';
+import { NginxManager } from './nginx-manager';
 import { WebhookPayload } from './types/preview-config';
+import { WebhookHandler } from './webhook-handler';
 
 // Load environment variables
 dotenv.config();
@@ -60,7 +61,7 @@ try {
   fs.mkdirSync(path.join(__dirname, '../logs'), { recursive: true });
 } catch (error: unknown) {
   if (error instanceof Error) {
-  logger.error({ error: error.message }, 'Failed to create directories');
+    logger.error({ error: error.message }, 'Failed to create directories');
   } else {
     logger.error({ error: 'Unknown error' }, 'Failed to create directories');
   }
@@ -78,7 +79,7 @@ const webhookHandler = new WebhookHandler(
   dockerManager,
   nginxManager,
   tracker,
-  logger
+  logger,
 );
 const cleanupService = new CleanupService(
   tracker,
@@ -86,7 +87,7 @@ const cleanupService = new CleanupService(
   dockerManager,
   nginxManager,
   ttlDays,
-  logger
+  logger,
 );
 
 // Start cleanup service
@@ -116,16 +117,16 @@ app.get('/health', (_req: Request, res: Response) => {
 
 // Webhook endpoint
 app.post('/webhook/github', (req: Request, res: Response) => {
-  (async () => {
+  async () => {
     const signature = req.headers['x-hub-signature-256'] as string;
     const payload = JSON.stringify(req.body);
 
-  // Verify signature
-  if (!webhookHandler.verifySignature(payload, signature)) {
-    logger.warn('Webhook signature verification failed');
-    res.status(401).json({ error: 'Invalid signature' });
-    return;
-  }
+    // Verify signature
+    if (!webhookHandler.verifySignature(payload, signature)) {
+      logger.warn('Webhook signature verification failed');
+      res.status(401).json({ error: 'Invalid signature' });
+      return;
+    }
 
     try {
       const webhookPayload = req.body as WebhookPayload;
@@ -139,7 +140,7 @@ app.post('/webhook/github', (req: Request, res: Response) => {
       }
       res.status(500).json({ error: error instanceof Error ? error.message : 'Unknown error' });
     }
-  })
+  };
 });
 
 // Admin endpoints
@@ -158,35 +159,35 @@ app.get('/api/previews', (_req: Request, res: Response) => {
 });
 
 app.delete('/api/previews/:prNumber', (req: Request, res: Response) => {
-  (async () => {
-  const prNumber = parseInt(req.params.prNumber, 10);
+  async () => {
+    const prNumber = parseInt(req.params.prNumber, 10);
 
-  if (isNaN(prNumber)) {
-    res.status(400).json({ error: 'Invalid PR number' });
-    return;
-  }
-
-  try {
-    const deployment = tracker.getDeployment(prNumber);
-    if (!deployment) {
-      res.status(404).json({ error: 'Deployment not found' });
+    if (isNaN(prNumber)) {
+      res.status(400).json({ error: 'Invalid PR number' });
       return;
     }
 
-    await dockerManager.cleanupPreview(prNumber);
-    await nginxManager.removePreview(prNumber);
-    await tracker.deleteDeployment(prNumber);
+    try {
+      const deployment = tracker.getDeployment(prNumber);
+      if (!deployment) {
+        res.status(404).json({ error: 'Deployment not found' });
+        return;
+      }
 
-    res.json({ status: 'ok', message: `Preview #${prNumber} cleaned up` });
-  } catch (error: unknown) {
-    if (error instanceof Error) {
-      logger.error({ prNumber, error: error.message }, 'Failed to cleanup preview');
-    } else {
-      logger.error({ prNumber, error: 'Unknown error' }, 'Failed to cleanup preview');
+      await dockerManager.cleanupPreview(prNumber);
+      await nginxManager.removePreview(prNumber);
+      await tracker.deleteDeployment(prNumber);
+
+      res.json({ status: 'ok', message: `Preview #${prNumber} cleaned up` });
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        logger.error({ prNumber, error: error.message }, 'Failed to cleanup preview');
+      } else {
+        logger.error({ prNumber, error: 'Unknown error' }, 'Failed to cleanup preview');
+      }
+      res.status(500).json({ error: error instanceof Error ? error.message : 'Unknown error' });
     }
-    res.status(500).json({ error: error instanceof Error ? error.message : 'Unknown error' });
-  }
-})
+  };
 });
 
 // Error handling middleware

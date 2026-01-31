@@ -1,11 +1,12 @@
 #!/usr/bin/env node
 
-import { Command } from 'commander';
 import chalk from 'chalk';
+import { Command } from 'commander';
+
+import { destroyCommand } from './commands/destroy';
 import { initCommand } from './commands/init';
 import { setupCommand } from './commands/setup';
 import { statusCommand } from './commands/status';
-import { destroyCommand } from './commands/destroy';
 
 const program = new Command();
 
@@ -21,7 +22,9 @@ program
     try {
       await initCommand();
     } catch (error: unknown) {
-      console.error(chalk.red(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`));
+      console.error(
+        chalk.red(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`),
+      );
       process.exit(1);
     }
   });
@@ -33,7 +36,9 @@ program
     try {
       await setupCommand();
     } catch (error: unknown) {
-      console.error(chalk.red(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`));
+      console.error(
+        chalk.red(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`),
+      );
       process.exit(1);
     }
   });
@@ -45,7 +50,9 @@ program
     try {
       await statusCommand();
     } catch (error: unknown) {
-      console.error(chalk.red(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`));
+      console.error(
+        chalk.red(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`),
+      );
       process.exit(1);
     }
   });
@@ -57,7 +64,9 @@ program
     try {
       await destroyCommand();
     } catch (error: unknown) {
-      console.error(chalk.red(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`));
+      console.error(
+        chalk.red(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`),
+      );
       process.exit(1);
     }
   });

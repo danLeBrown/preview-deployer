@@ -1,0 +1,5 @@
+{
+  "extends": "./tsconfig.json",
+  "include": ["orchestrator/**/*.ts", "cli/**/*.ts"],
+  "exclude": ["node_modules", "orchestrator/dist", "cli/dist", "dist", "build", ".eslintrc.js"]
+}

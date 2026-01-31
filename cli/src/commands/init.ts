@@ -1,9 +1,10 @@
-import * as inquirer from 'inquirer';
+import chalk from 'chalk';
 import * as crypto from 'crypto';
 import * as fs from 'fs';
+import * as inquirer from 'inquirer';
 import * as path from 'path';
-import chalk from 'chalk';
-import { ConfigManager, Config } from '../utils/config';
+
+import { Config, ConfigManager } from '../utils/config';
 
 interface InquirerAnswers {
   doToken: string;
@@ -67,7 +68,7 @@ export async function initCommand(): Promise<void> {
       default: '7',
       validate: (input: string) => {
         const days = parseInt(input, 10);
-        return !isNaN(days) && days > 0 || 'Must be a positive number';
+        return (!isNaN(days) && days > 0) || 'Must be a positive number';
       },
     },
     {
@@ -77,7 +78,7 @@ export async function initCommand(): Promise<void> {
       default: '10',
       validate: (input: string) => {
         const max = parseInt(input, 10);
-        return !isNaN(max) && max > 0 || 'Must be a positive number';
+        return (!isNaN(max) && max > 0) || 'Must be a positive number';
       },
     },
     {

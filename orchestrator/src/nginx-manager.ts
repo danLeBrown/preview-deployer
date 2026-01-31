@@ -1,10 +1,10 @@
-import * as fs from 'fs/promises';
-import * as fsSync from 'fs';
-import * as path from 'path';
-import * as Handlebars from 'handlebars';
 import { exec } from 'child_process';
-import { promisify } from 'util';
+import * as fsSync from 'fs';
+import * as fs from 'fs/promises';
+import * as Handlebars from 'handlebars';
+import * as path from 'path';
 import { Logger } from 'pino';
+import { promisify } from 'util';
 
 const execAsync = promisify(exec);
 
@@ -36,7 +36,7 @@ export class NginxManager {
     } catch (error: unknown) {
       this.logger.error(
         { prNumber, appPort, error: error instanceof Error ? error.message : 'Unknown error' },
-        'Failed to add nginx preview config'
+        'Failed to add nginx preview config',
       );
       throw error;
     }
@@ -54,7 +54,7 @@ export class NginxManager {
       if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
         this.logger.error(
           { prNumber, error: error instanceof Error ? error.message : 'Unknown error' },
-          'Failed to remove nginx config'
+          'Failed to remove nginx config',
         );
         throw error;
       }
@@ -80,10 +80,15 @@ export class NginxManager {
       this.logger.info('Nginx reloaded successfully');
     } catch (error: unknown) {
       this.logger.error(
-        { error: error instanceof Error ? error.message : 'Unknown error', stderr: (error as Record<string, unknown>).stderr },
-        'Failed to reload nginx'
+        {
+          error: error instanceof Error ? error.message : 'Unknown error',
+          stderr: (error as Record<string, unknown>).stderr,
+        },
+        'Failed to reload nginx',
       );
-      throw new Error(`Nginx reload failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(
+        `Nginx reload failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      );
     }
   }
 }
