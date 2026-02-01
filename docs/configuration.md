@@ -4,18 +4,18 @@ Complete reference for all configuration options in preview-deployer.
 
 ## Repository Configuration (`preview-config.yml`)
 
-Place this file in your repository root to configure preview deployments.
+Place this file in your repository root to configure preview deployments. The orchestrator reads it **after** cloning the repo; any values you set here override defaults and auto-detection (e.g. framework is taken from this file when present, otherwise detected from the repo).
 
 ### Required Fields
 
 ```yaml
-# Framework selection
-framework: nestjs # Options: nestjs, go
+# Framework selection (overrides auto-detection when set)
+framework: nestjs # Options: nestjs, go, laravel
 
 # Database type
 database: postgres # Options: postgres, mysql, mongodb
 
-# Health check endpoint path
+# Health check endpoint path (used when waiting for the app to be ready)
 health_check_path: /health # Path to health check endpoint
 ```
 

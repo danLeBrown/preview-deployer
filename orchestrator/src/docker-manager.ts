@@ -6,9 +6,10 @@ import * as path from 'path';
 import { Logger } from 'pino';
 import { promisify } from 'util';
 
-import { detectFramework as detectFrameworkUtil, fileExists } from './framework-detection';
+import { fileExists, resolveFramework } from './framework-detection';
+import { readRepoPreviewConfig } from './repo-config';
 import { IDeploymentTracker } from './types/deployment';
-import { IPreviewConfig, TFramework } from './types/preview-config';
+import { IPreviewConfig, TDatabaseType, TFramework } from './types/preview-config';
 
 const execAsync = promisify(exec);
 
@@ -33,7 +34,9 @@ export class DockerManager {
     this.logger = logger;
   }
 
-  async deployPreview(config: IPreviewConfig): Promise<{ url: string; appPort: number }> {
+  async deployPreview(
+    config: IPreviewConfig,
+  ): Promise<{ url: string; appPort: number; framework: TFramework; dbType: TDatabaseType }> {
     const workDir = path.join(this.deploymentsDir, `pr-${config.prNumber}`);
     const { appPort, dbPort } = this.tracker.allocatePorts(config.prNumber);
 
@@ -51,9 +54,15 @@ export class DockerManager {
       await execAsync(`git checkout ${config.branch}`, { cwd: workDir });
       await execAsync(`git reset --hard ${config.commitSha}`, { cwd: workDir });
 
-      // Detect framework
-      const framework = await detectFrameworkUtil(workDir);
-      this.logger.info({ prNumber: config.prNumber, framework }, 'Detected framework');
+      // Read repo preview-config.yml if present; use for framework, database, health path
+      const repoConfig = await readRepoPreviewConfig(workDir);
+      const framework = await resolveFramework(workDir, repoConfig);
+      const dbType: TDatabaseType = repoConfig?.database ?? config.dbType;
+      const healthCheckPath = repoConfig?.health_check_path ?? '/health';
+      this.logger.info(
+        { prNumber: config.prNumber, framework, dbType, fromRepoConfig: Boolean(repoConfig) },
+        'Resolved framework and database',
+      );
 
       // Ensure repo has a Dockerfile; inject framework default if missing
       await this.ensureDockerfile(workDir, framework);
@@ -67,15 +76,11 @@ export class DockerManager {
         workDir,
       );
 
-      // console.log('composeFile', composeFile);
-      console.log(await fs.readFile(composeFile, 'utf-8'));
-
-      // Build and start containers
       this.logger.info({ prNumber: config.prNumber }, 'Building containers');
       await execAsync(`docker compose -f ${composeFile} up -d --build`, { cwd: workDir });
 
       // Wait for health check
-      const isHealthy = await this.waitForHealthy(appPort, 60);
+      const isHealthy = await this.waitForHealthy(appPort, healthCheckPath, 60);
       if (!isHealthy) {
         throw new Error(`Health check failed for PR #${config.prNumber}`);
       }
@@ -83,7 +88,7 @@ export class DockerManager {
       const url = `${process.env.PREVIEW_BASE_URL || 'http://localhost'}/pr-${config.prNumber}/`;
       this.logger.info({ prNumber: config.prNumber, url }, 'Preview deployed successfully');
 
-      return { url, appPort };
+      return { url, appPort, framework, dbType };
     } catch (error: unknown) {
       this.logger.error(
         {
@@ -123,8 +128,10 @@ export class DockerManager {
       const composeFile = path.join(workDir, 'docker-compose.preview.yml');
       await execAsync(`docker compose -f ${composeFile} up -d --build`, { cwd: workDir });
 
-      // Wait for health check
-      const isHealthy = await this.waitForHealthy(deployment.appPort, 60);
+      // Wait for health check (use repo preview-config path if present)
+      const repoConfig = await readRepoPreviewConfig(workDir);
+      const healthCheckPath = repoConfig?.health_check_path ?? '/health';
+      const isHealthy = await this.waitForHealthy(deployment.appPort, healthCheckPath, 60);
       if (!isHealthy) {
         throw new Error(`Health check failed after update for PR #${prNumber}`);
       }
@@ -254,8 +261,13 @@ export class DockerManager {
     return composeFile;
   }
 
-  private async waitForHealthy(port: number, maxAttempts: number): Promise<boolean> {
-    const healthUrl = `http://localhost:${port}/health`;
+  private async waitForHealthy(
+    port: number,
+    healthPath: string,
+    maxAttempts: number,
+  ): Promise<boolean> {
+    const normalizedPath = healthPath.startsWith('/') ? healthPath : `/${healthPath}`;
+    const healthUrl = `http://localhost:${port}${normalizedPath}`;
     const delay = 5000; // 5 seconds
 
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {

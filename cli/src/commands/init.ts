@@ -117,7 +117,7 @@ export async function initCommand(): Promise<void> {
   const exampleConfig = `# Preview Deployer Configuration
 # Place this file in your repository root
 
-framework: nestjs  # Options: nestjs, go
+framework: nestjs  # Options: nestjs, go, laravel (overrides auto-detection)
 database: postgres  # Options: postgres, mysql, mongodb
 health_check_path: /health  # Health check endpoint path
 

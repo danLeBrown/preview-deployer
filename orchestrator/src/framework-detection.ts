@@ -1,7 +1,7 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
 
-import { TFramework } from './types/preview-config';
+import { IRepoPreviewConfig, TFramework } from './types/preview-config';
 
 /** Check if a file exists at dir/file (no throw). */
 export async function fileExists(dir: string, file: string): Promise<boolean> {
@@ -114,4 +114,18 @@ export async function detectFramework(workDir: string): Promise<TFramework> {
     }
   }
   return DEFAULT_FRAMEWORK;
+}
+
+/**
+ * Resolve framework: use repo preview-config.yml value if present and valid,
+ * otherwise detect from repo contents.
+ */
+export async function resolveFramework(
+  workDir: string,
+  repoConfig: IRepoPreviewConfig | null,
+): Promise<TFramework> {
+  if (repoConfig?.framework) {
+    return repoConfig.framework;
+  }
+  return detectFramework(workDir);
 }

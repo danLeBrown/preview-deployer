@@ -102,6 +102,9 @@ importers:
       handlebars:
         specifier: ^4.7.8
         version: 4.7.8
+      js-yaml:
+        specifier: ^4.1.0
+        version: 4.1.1
       pino:
         specifier: ^8.17.2
         version: 8.21.0
@@ -115,6 +118,9 @@ importers:
       '@types/express':
         specifier: ^4.17.21
         version: 4.17.25
+      '@types/js-yaml':
+        specifier: ^4.0.9
+        version: 4.0.9
       '@types/node':
         specifier: ^20.11.0
         version: 20.19.30

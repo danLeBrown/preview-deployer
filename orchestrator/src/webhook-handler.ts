@@ -163,15 +163,17 @@ export class WebhookHandler {
       dbType: 'postgres',
     };
 
-    // Deploy preview
-    const { url, appPort } = await this.dockerManager.deployPreview(config);
+    // Deploy preview (framework and dbType resolved from repo preview-config.yml or detection)
+    const { url, appPort, framework, dbType } = await this.dockerManager.deployPreview(config);
 
     // Add nginx config
     await this.nginxManager.addPreview(prNumber, appPort);
 
-    // Save deployment info
+    // Save deployment info with resolved framework and dbType
     const deployment: IDeploymentInfo = {
       ...config,
+      framework,
+      dbType,
       appPort,
       dbPort: 9000 + prNumber,
       status: 'running',
