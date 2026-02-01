@@ -18,7 +18,6 @@ export async function statusCommand(): Promise<void> {
 
   try {
     const outputs = await terraform.getOutputs();
-    console.log(JSON.stringify(outputs));
 
     if (Object.keys(outputs).length === 0) {
       console.log(chalk.yellow('Terraform outputs not found. Run "preview init" first.'));

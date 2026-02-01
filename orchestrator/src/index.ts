@@ -116,31 +116,29 @@ app.get('/health', (_req: Request, res: Response) => {
 });
 
 // Webhook endpoint
-app.post('/webhook/github', (req: Request, res: Response) => {
-  async () => {
-    const signature = req.headers['x-hub-signature-256'] as string;
-    const payload = JSON.stringify(req.body);
+app.post('/webhook/github', async (req: Request, res: Response) => {
+  const signature = req.headers['x-hub-signature-256'] as string;
+  const payload = JSON.stringify(req.body);
 
-    // Verify signature
-    if (!webhookHandler.verifySignature(payload, signature)) {
-      logger.warn('Webhook signature verification failed');
-      res.status(401).json({ error: 'Invalid signature' });
-      return;
-    }
+  // Verify signature
+  if (!webhookHandler.verifySignature(payload, signature)) {
+    logger.warn('Webhook signature verification failed');
+    res.status(401).json({ error: 'Invalid signature' });
+    return;
+  }
 
-    try {
-      const webhookPayload = req.body as WebhookPayload;
-      await webhookHandler.handleWebhook(webhookPayload);
-      res.json({ status: 'ok' });
-    } catch (error: unknown) {
-      if (error instanceof Error) {
-        logger.error({ error: error.message }, 'Webhook handling failed');
-      } else {
-        logger.error({ error: 'Unknown error' }, 'Webhook handling failed');
-      }
-      res.status(500).json({ error: error instanceof Error ? error.message : 'Unknown error' });
+  try {
+    const webhookPayload = req.body as WebhookPayload;
+    await webhookHandler.handleWebhook(webhookPayload);
+    res.json({ status: 'ok' });
+  } catch (error: unknown) {
+    if (error instanceof Error) {
+      logger.error({ error: error.message }, 'Webhook handling failed');
+    } else {
+      logger.error({ error: 'Unknown error' }, 'Webhook handling failed');
     }
-  };
+    res.status(500).json({ error: error instanceof Error ? error.message : 'Unknown error' });
+  }
 });
 
 // Admin endpoints
@@ -158,36 +156,34 @@ app.get('/api/previews', (_req: Request, res: Response) => {
   }
 });
 
-app.delete('/api/previews/:prNumber', (req: Request, res: Response) => {
-  async () => {
-    const prNumber = parseInt(req.params.prNumber, 10);
+app.delete('/api/previews/:prNumber', async (req: Request, res: Response) => {
+  const prNumber = parseInt(req.params.prNumber, 10);
 
-    if (isNaN(prNumber)) {
-      res.status(400).json({ error: 'Invalid PR number' });
+  if (isNaN(prNumber)) {
+    res.status(400).json({ error: 'Invalid PR number' });
+    return;
+  }
+
+  try {
+    const deployment = tracker.getDeployment(prNumber);
+    if (!deployment) {
+      res.status(404).json({ error: 'Deployment not found' });
       return;
     }
 
-    try {
-      const deployment = tracker.getDeployment(prNumber);
-      if (!deployment) {
-        res.status(404).json({ error: 'Deployment not found' });
-        return;
-      }
+    await dockerManager.cleanupPreview(prNumber);
+    await nginxManager.removePreview(prNumber);
+    await tracker.deleteDeployment(prNumber);
 
-      await dockerManager.cleanupPreview(prNumber);
-      await nginxManager.removePreview(prNumber);
-      await tracker.deleteDeployment(prNumber);
-
-      res.json({ status: 'ok', message: `Preview #${prNumber} cleaned up` });
-    } catch (error: unknown) {
-      if (error instanceof Error) {
-        logger.error({ prNumber, error: error.message }, 'Failed to cleanup preview');
-      } else {
-        logger.error({ prNumber, error: 'Unknown error' }, 'Failed to cleanup preview');
-      }
-      res.status(500).json({ error: error instanceof Error ? error.message : 'Unknown error' });
+    res.json({ status: 'ok', message: `Preview #${prNumber} cleaned up` });
+  } catch (error: unknown) {
+    if (error instanceof Error) {
+      logger.error({ prNumber, error: error.message }, 'Failed to cleanup preview');
+    } else {
+      logger.error({ prNumber, error: 'Unknown error' }, 'Failed to cleanup preview');
     }
-  };
+    res.status(500).json({ error: error instanceof Error ? error.message : 'Unknown error' });
+  }
 });
 
 // Error handling middleware
