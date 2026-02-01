@@ -1,0 +1,13 @@
+# Redis extra service (BullMQ, cache, etc.). Merged into compose when extra_services: [redis].
+# App receives REDIS_URL=redis://redis:6379 and depends_on: redis.
+image: redis:7-alpine
+container_name: pr-{{prNumber}}-redis
+restart: unless-stopped
+deploy:
+  resources:
+    limits:
+      cpus: '0.25'
+      memory: 128M
+    reservations:
+      cpus: '0.1'
+      memory: 64M

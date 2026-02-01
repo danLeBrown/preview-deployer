@@ -22,11 +22,15 @@ health_check_path: /health # Path to health check endpoint
 ### Optional Fields
 
 ```yaml
-# Custom build commands (run before container start)
+# Commands run on the host in repo root before docker compose up (e.g. copy .env).
+# Non-zero exit fails the deployment. Use for file setup, not for npm install (that stays in Dockerfile).
 build_commands:
-  - npm install
-  - npm run build
-  - npm run test
+  - cp .env.example .env
+  - mkdir -p uploads
+
+# Extra infra: list of known template names. App is wired automatically (e.g. REDIS_URL for redis).
+extra_services:
+  - redis # Adds Redis service; app gets REDIS_URL=redis://redis:6379 (BullMQ, cache, etc.)
 
 # Environment variables (passed to application container)
 env:

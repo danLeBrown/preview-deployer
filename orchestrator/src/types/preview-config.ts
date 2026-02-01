@@ -3,12 +3,16 @@ export type TDatabaseType = 'postgres' | 'mysql' | 'mongodb';
 export type TPreviewStatus = 'building' | 'running' | 'failed' | 'stopped';
 export type TPRStatus = 'open' | 'closed' | 'merged';
 
+/** Known extra service template names (e.g. redis for BullMQ). */
+export type TExtraService = 'redis';
+
 /** Parsed from repo-root preview-config.yml; all fields optional. */
 export interface IRepoPreviewConfig {
   framework?: TFramework;
   database?: TDatabaseType;
   health_check_path?: string;
   build_commands?: string[];
+  extra_services?: TExtraService[];
   env?: string[];
   dockerfile?: string;
 }

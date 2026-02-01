@@ -2,6 +2,7 @@ import { exec } from 'child_process';
 import Docker, { ContainerInspectInfo } from 'dockerode';
 import * as fs from 'fs/promises';
 import * as Handlebars from 'handlebars';
+import * as yaml from 'js-yaml';
 import * as path from 'path';
 import { Logger } from 'pino';
 import { promisify } from 'util';
@@ -9,7 +10,7 @@ import { promisify } from 'util';
 import { fileExists, resolveFramework } from './framework-detection';
 import { readRepoPreviewConfig } from './repo-config';
 import { IDeploymentTracker } from './types/deployment';
-import { IPreviewConfig, TDatabaseType, TFramework } from './types/preview-config';
+import { IPreviewConfig, TDatabaseType, TExtraService, TFramework } from './types/preview-config';
 
 const execAsync = promisify(exec);
 
@@ -64,15 +65,35 @@ export class DockerManager {
         'Resolved framework and database',
       );
 
+      // Run build_commands from preview-config.yml (e.g. cp .env.example .env); fail on non-zero
+      if (repoConfig?.build_commands?.length) {
+        for (let i = 0; i < repoConfig.build_commands.length; i++) {
+          const cmd = repoConfig.build_commands[i];
+          this.logger.info(
+            { prNumber: config.prNumber, cmd, index: i + 1 },
+            'Running build command',
+          );
+          try {
+            await execAsync(cmd, { cwd: workDir });
+          } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : String(err);
+            throw new Error(
+              `Build command failed (${i + 1}/${repoConfig.build_commands.length}): ${cmd} — ${msg}`,
+            );
+          }
+        }
+      }
+
       // Ensure repo has a Dockerfile; inject framework default if missing
       await this.ensureDockerfile(workDir, framework);
 
-      // Generate docker-compose file
+      // Generate docker-compose file (base + extra services e.g. redis)
       const composeFile = await this.generateDockerCompose(
         config.prNumber,
         appPort,
         dbPort,
         framework,
+        repoConfig?.extra_services ?? [],
         workDir,
       );
 
@@ -237,6 +258,7 @@ export class DockerManager {
     appPort: number,
     dbPort: number,
     framework: TFramework,
+    extraServices: TExtraService[],
     workDir: string,
   ): Promise<string> {
     const templateNames: Record<TFramework, string> = {
@@ -249,16 +271,51 @@ export class DockerManager {
     const templateContent = await fs.readFile(templatePath, 'utf-8');
     const template = Handlebars.compile(templateContent);
 
-    const composeContent = template({
+    let composeContent = template({
       prNumber,
       appPort,
       dbPort,
     });
 
+    // Merge extra services (e.g. redis) into compose: add service block + app env + app depends_on
+    if (extraServices.length > 0) {
+      const composeObj = yaml.load(composeContent) as Record<string, unknown>;
+      const services = (composeObj.services ?? {}) as Record<string, unknown>;
+      const app = (services.app ?? {}) as Record<string, unknown>;
+
+      for (const name of extraServices) {
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+        if (name === 'redis') {
+          (services as Record<string, unknown>).redis = await this.loadRedisServiceBlock(prNumber);
+          // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+          const env = (app.environment as string[]) ?? [];
+          if (!env.some((e) => e.startsWith('REDIS_URL='))) {
+            app.environment = [...env, 'REDIS_URL=redis://redis:6379'];
+          }
+          // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+          const dependsOn = (app.depends_on as Record<string, unknown>) ?? {};
+          (dependsOn as Record<string, unknown>).redis = {};
+          app.depends_on = dependsOn;
+        }
+      }
+      composeObj.services = services;
+      composeContent = yaml.dump(composeObj, { lineWidth: -1 });
+    }
+
     const composeFile = path.join(workDir, 'docker-compose.preview.yml');
     await fs.writeFile(composeFile, composeContent, 'utf-8');
 
     return composeFile;
+  }
+
+  /** Load Redis extra-service block from template (BullMQ etc.); app connects via network. */
+  private async loadRedisServiceBlock(prNumber: number): Promise<Record<string, unknown>> {
+    const templatePath = path.join(this.templatesDir, 'extra-service.redis.yml');
+    const templateContent = await fs.readFile(templatePath, 'utf-8');
+    const template = Handlebars.compile(templateContent);
+    const rendered = template({ prNumber });
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    return (yaml.load(rendered) as Record<string, unknown>) ?? {};
   }
 
   private async waitForHealthy(

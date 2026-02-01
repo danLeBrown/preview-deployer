@@ -3,12 +3,18 @@ import * as yaml from 'js-yaml';
 import * as path from 'path';
 
 import { fileExists } from './framework-detection';
-import { IRepoPreviewConfig, TDatabaseType, TFramework } from './types/preview-config';
+import {
+  IRepoPreviewConfig,
+  TDatabaseType,
+  TExtraService,
+  TFramework,
+} from './types/preview-config';
 
 const PREVIEW_CONFIG_FILENAME = 'preview-config.yml';
 
 const VALID_FRAMEWORKS: TFramework[] = ['nestjs', 'go', 'laravel'];
 const VALID_DATABASES: TDatabaseType[] = ['postgres', 'mysql', 'mongodb'];
+const VALID_EXTRA_SERVICES: TExtraService[] = ['redis'];
 
 function isTFramework(value: unknown): value is TFramework {
   return typeof value === 'string' && VALID_FRAMEWORKS.includes(value as TFramework);
@@ -16,6 +22,16 @@ function isTFramework(value: unknown): value is TFramework {
 
 function isTDatabaseType(value: unknown): value is TDatabaseType {
   return typeof value === 'string' && VALID_DATABASES.includes(value as TDatabaseType);
+}
+
+function parseExtraServices(value: unknown): TExtraService[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  return value.filter(
+    (v): v is TExtraService =>
+      typeof v === 'string' && VALID_EXTRA_SERVICES.includes(v as TExtraService),
+  );
 }
 
 /** Parse raw YAML into IRepoPreviewConfig, validating and normalizing fields. */
@@ -42,6 +58,10 @@ function parseRepoPreviewConfig(raw: unknown): IRepoPreviewConfig {
     obj.build_commands.every((c): c is string => typeof c === 'string')
   ) {
     out.build_commands = obj.build_commands;
+  }
+  const extra = parseExtraServices(obj.extra_services);
+  if (extra.length > 0) {
+    out.extra_services = extra;
   }
   if (Array.isArray(obj.env) && obj.env.every((e): e is string => typeof e === 'string')) {
     out.env = obj.env;

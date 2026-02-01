@@ -115,18 +115,21 @@ export async function initCommand(): Promise<void> {
 
   // Create example preview-config.yml
   const exampleConfig = `# Preview Deployer Configuration
-# Place this file in your repository root
+# Place this file in your repository root as preview-config.yml
 
 framework: nestjs  # Options: nestjs, go, laravel (overrides auto-detection)
 database: postgres  # Options: postgres, mysql, mongodb
 health_check_path: /health  # Health check endpoint path
 
-# Optional: Custom build commands
+# Optional: Commands run on the host before docker compose (e.g. copy .env)
 # build_commands:
-#   - npm install
-#   - npm run build
+#   - cp .env.example .env
 
-# Optional: Environment variables
+# Optional: Extra infra (e.g. Redis for BullMQ). App gets REDIS_URL=redis://redis:6379
+# extra_services:
+#   - redis
+
+# Optional: Environment variables (passed to application container)
 # env:
 #   - NODE_ENV=preview
 `;
