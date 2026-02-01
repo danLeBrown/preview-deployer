@@ -10,7 +10,13 @@ import { promisify } from 'util';
 import { fileExists, resolveFramework } from './framework-detection';
 import { readRepoPreviewConfig } from './repo-config';
 import { IDeploymentTracker } from './types/deployment';
-import { IPreviewConfig, TDatabaseType, TExtraService, TFramework } from './types/preview-config';
+import {
+  IPreviewConfig,
+  IRepoPreviewConfig,
+  TDatabaseType,
+  TExtraService,
+  TFramework,
+} from './types/preview-config';
 
 const execAsync = promisify(exec);
 
@@ -87,7 +93,7 @@ export class DockerManager {
       // Ensure repo has a Dockerfile; inject framework default if missing
       await this.ensureDockerfile(workDir, framework);
 
-      // Generate docker-compose file (base + extra services e.g. redis)
+      // Generate docker-compose file (base + extra services + env/env_file from preview-config)
       const composeFile = await this.generateDockerCompose(
         config.prNumber,
         appPort,
@@ -95,6 +101,7 @@ export class DockerManager {
         framework,
         repoConfig?.extra_services ?? [],
         workDir,
+        repoConfig ?? undefined,
       );
 
       this.logger.info({ prNumber: config.prNumber }, 'Building containers');
@@ -260,6 +267,7 @@ export class DockerManager {
     framework: TFramework,
     extraServices: TExtraService[],
     workDir: string,
+    repoConfig?: IRepoPreviewConfig,
   ): Promise<string> {
     const templateNames: Record<TFramework, string> = {
       nestjs: 'docker-compose.nestjs.yml.hbs',
@@ -271,41 +279,70 @@ export class DockerManager {
     const templateContent = await fs.readFile(templatePath, 'utf-8');
     const template = Handlebars.compile(templateContent);
 
-    let composeContent = template({
+    const composeContent = template({
       prNumber,
       appPort,
       dbPort,
     });
 
-    // Merge extra services (e.g. redis) into compose: add service block + app env + app depends_on
-    if (extraServices.length > 0) {
-      const composeObj = yaml.load(composeContent) as Record<string, unknown>;
-      const services = (composeObj.services ?? {}) as Record<string, unknown>;
-      const app = (services.app ?? {}) as Record<string, unknown>;
+    const composeObj = yaml.load(composeContent) as Record<string, unknown>;
+    const services = (composeObj.services ?? {}) as Record<string, unknown>;
+    const app = (services.app ?? {}) as Record<string, unknown>;
 
-      for (const name of extraServices) {
+    // Merge extra services (e.g. redis) into compose: add service block + app env + app depends_on
+    for (const name of extraServices) {
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+      if (name === 'redis') {
+        (services as Record<string, unknown>).redis = await this.loadRedisServiceBlock(prNumber);
         // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-        if (name === 'redis') {
-          (services as Record<string, unknown>).redis = await this.loadRedisServiceBlock(prNumber);
-          // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-          const env = (app.environment as string[]) ?? [];
-          if (!env.some((e) => e.startsWith('REDIS_URL='))) {
-            app.environment = [...env, 'REDIS_URL=redis://redis:6379'];
-          }
-          // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-          const dependsOn = (app.depends_on as Record<string, unknown>) ?? {};
-          (dependsOn as Record<string, unknown>).redis = { condition: 'service_started' };
-          app.depends_on = dependsOn;
+        const env = (app.environment as string[]) ?? [];
+        if (!env.some((e) => e.startsWith('REDIS_URL='))) {
+          app.environment = [...env, 'REDIS_URL=redis://redis:6379'];
         }
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+        const dependsOn = (app.depends_on as Record<string, unknown>) ?? {};
+        (dependsOn as Record<string, unknown>).redis = { condition: 'service_started' };
+        app.depends_on = dependsOn;
       }
-      composeObj.services = services;
-      composeContent = yaml.dump(composeObj, { lineWidth: -1 });
     }
 
+    // Wire env and env_file from preview-config into app service (Heroku/Vercel-style runtime env)
+    if (repoConfig?.env?.length || repoConfig?.env_file) {
+      const currentEnv = app.environment;
+      const env = Array.isArray(currentEnv) ? (currentEnv as string[]) : [];
+      if (repoConfig.env?.length) {
+        app.environment = [...env, ...repoConfig.env];
+      }
+      if (repoConfig.env_file) {
+        app.env_file = Array.isArray(repoConfig.env_file)
+          ? repoConfig.env_file
+          : [repoConfig.env_file];
+      }
+    }
+
+    // Wire startup_commands: run inside container before main process (migrations, seeding, etc.)
+    if (repoConfig?.startup_commands?.length) {
+      const script = [...repoConfig.startup_commands, 'exec "$@"'].join(' && ');
+      app.entrypoint = ['/bin/sh', '-c', script, '--'];
+      app.command = this.getDefaultCommand(framework);
+    }
+
+    composeObj.services = services;
+    const finalContent = yaml.dump(composeObj, { lineWidth: -1 });
     const composeFile = path.join(workDir, 'docker-compose.preview.yml');
-    await fs.writeFile(composeFile, composeContent, 'utf-8');
+    await fs.writeFile(composeFile, finalContent, 'utf-8');
 
     return composeFile;
+  }
+
+  /** Default CMD per framework (must match Dockerfile template). Used when startup_commands override entrypoint. */
+  private getDefaultCommand(framework: TFramework): string[] {
+    const commands: Record<TFramework, string[]> = {
+      nestjs: ['node', 'dist/main'],
+      go: ['./server'],
+      laravel: ['php', 'artisan', 'serve', '--host=0.0.0.0', '--port=8000'],
+    };
+    return commands[framework];
   }
 
   /** Load Redis extra-service block from template (BullMQ etc.); app connects via network. */

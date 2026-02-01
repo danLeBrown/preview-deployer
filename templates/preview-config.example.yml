@@ -14,6 +14,14 @@ health_check_path: /health # Health check endpoint path
 # extra_services:
 #   - redis
 
-# Optional: Environment variables (passed to application container)
+# Optional: Environment variables (injected at runtime; keep .env in .dockerignore)
 # env:
 #   - NODE_ENV=preview
+
+# Optional: Env file(s) relative to repo root (e.g. .env). Use with build_commands: [cp .env.example .env]
+# env_file: .env
+
+# Optional: Commands run inside the app container before the main process (migrations, seeding)
+# startup_commands:
+#   - npm run migration:run
+#   - npm run seed

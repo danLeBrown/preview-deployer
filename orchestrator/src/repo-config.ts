@@ -66,6 +66,20 @@ function parseRepoPreviewConfig(raw: unknown): IRepoPreviewConfig {
   if (Array.isArray(obj.env) && obj.env.every((e): e is string => typeof e === 'string')) {
     out.env = obj.env;
   }
+  if (typeof obj.env_file === 'string' && obj.env_file.length > 0) {
+    out.env_file = obj.env_file;
+  } else if (
+    Array.isArray(obj.env_file) &&
+    obj.env_file.every((e): e is string => typeof e === 'string' && e.length > 0)
+  ) {
+    out.env_file = obj.env_file;
+  }
+  if (
+    Array.isArray(obj.startup_commands) &&
+    obj.startup_commands.every((c): c is string => typeof c === 'string')
+  ) {
+    out.startup_commands = obj.startup_commands;
+  }
   if (typeof obj.dockerfile === 'string' && obj.dockerfile.length > 0) {
     out.dockerfile = obj.dockerfile;
   }

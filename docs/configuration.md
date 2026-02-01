@@ -32,21 +32,28 @@ build_commands:
 extra_services:
   - redis # Adds Redis service; app gets REDIS_URL=redis://redis:6379 (BullMQ, cache, etc.)
 
-# Environment variables (passed to application container)
+# Environment variables (injected at runtime into the app container; keep .env in .dockerignore)
 env:
   - NODE_ENV=preview
   - DEBUG=true
   - API_KEY=value
 
+# Optional: Env file(s) relative to repo root (e.g. .env from build_commands). Loaded by Compose at runtime.
+# Use with build_commands: [cp .env.example .env] so the file exists before docker compose up.
+# env_file: .env
+# env_file:
+#   - .env
+#   - .env.preview
+
+# Commands run inside the app container before the main process (migrations, seeding, etc.).
+# Runs in order; non-zero exit fails the container. Then the app starts as usual.
+startup_commands:
+  - npm run migration:run
+  - npm run seed
+# Or: npx prisma migrate deploy && npx prisma db seed
+
 # Custom Dockerfile path (relative to repo root)
 dockerfile: ./Dockerfile
-
-# Database seeding
-seed:
-  - type: sql
-    file: ./seed.sql
-  - type: command
-    command: npm run seed
 ```
 
 ## CLI Configuration (`~/.preview-deployer/config.yml`)

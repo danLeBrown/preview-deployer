@@ -14,6 +14,10 @@ export interface IRepoPreviewConfig {
   build_commands?: string[];
   extra_services?: TExtraService[];
   env?: string[];
+  /** Path(s) to env file(s) relative to repo root (e.g. .env). Loaded by Compose at runtime. */
+  env_file?: string | string[];
+  /** Commands run inside the app container before the main process (e.g. migrations, seeding). */
+  startup_commands?: string[];
   dockerfile?: string;
 }
 
