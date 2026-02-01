@@ -1,0 +1,16 @@
+# Default Dockerfile for NestJS previews (injected when repo has no Dockerfile)
+FROM node:20-alpine
+
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm ci 2>/dev/null || npm install
+
+COPY . .
+RUN npm run build
+
+EXPOSE 3000
+
+USER node
+
+CMD ["node", "dist/main.js"]

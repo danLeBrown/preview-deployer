@@ -1,4 +1,4 @@
-export type TFramework = 'nestjs' | 'go';
+export type TFramework = 'nestjs' | 'go' | 'laravel';
 export type TDatabaseType = 'postgres' | 'mysql' | 'mongodb';
 export type TPreviewStatus = 'building' | 'running' | 'failed' | 'stopped';
 export type TPRStatus = 'open' | 'closed' | 'merged';

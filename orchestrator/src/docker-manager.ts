@@ -6,6 +6,7 @@ import * as path from 'path';
 import { Logger } from 'pino';
 import { promisify } from 'util';
 
+import { detectFramework as detectFrameworkUtil, fileExists } from './framework-detection';
 import { IDeploymentTracker } from './types/deployment';
 import { IPreviewConfig, TFramework } from './types/preview-config';
 
@@ -51,8 +52,11 @@ export class DockerManager {
       await execAsync(`git reset --hard ${config.commitSha}`, { cwd: workDir });
 
       // Detect framework
-      const framework = await this.detectFramework(workDir);
+      const framework = await detectFrameworkUtil(workDir);
       this.logger.info({ prNumber: config.prNumber, framework }, 'Detected framework');
+
+      // Ensure repo has a Dockerfile; inject framework default if missing
+      await this.ensureDockerfile(workDir, framework);
 
       // Generate docker-compose file
       const composeFile = await this.generateDockerCompose(
@@ -162,7 +166,6 @@ export class DockerManager {
   }
 
   async getPreviewStatus(prNumber: number): Promise<'running' | 'stopped' | 'failed'> {
-    ``;
     try {
       const containerName = `pr-${prNumber}-app`;
       const container = this.docker.getContainer(containerName);
@@ -186,51 +189,21 @@ export class DockerManager {
     }
   }
 
-  private async detectFramework(workDir: string): Promise<TFramework> {
+  private async ensureDockerfile(workDir: string, framework: TFramework): Promise<void> {
+    if (await fileExists(workDir, 'Dockerfile')) {
+      return;
+    }
+    const templateName = `Dockerfile.${framework}`;
+    const src = path.join(this.templatesDir, templateName);
+    const dest = path.join(workDir, 'Dockerfile');
     try {
-      // Check for NestJS
-      const nestCliPath = path.join(workDir, 'nest-cli.json');
-      const packageJsonPath = path.join(workDir, 'package.json');
-
-      try {
-        await fs.access(nestCliPath);
-        return 'nestjs';
-      } catch {
-        // Check package.json for NestJS
-        try {
-          const packageJson = JSON.parse(
-            await fs.readFile(packageJsonPath, 'utf-8'),
-          ) as unknown as {
-            dependencies: Record<string, string>;
-            devDependencies: Record<string, string>;
-          };
-          if (
-            packageJson.dependencies['@nestjs/core'] ||
-            packageJson.devDependencies['@nestjs/core']
-          ) {
-            return 'nestjs';
-          }
-        } catch {
-          // Continue to Go check
-        }
-      }
-
-      // Check for Go
-      const goModPath = path.join(workDir, 'go.mod');
-      try {
-        await fs.access(goModPath);
-        return 'go';
-      } catch {
-        // Default to NestJS if detection fails
-        this.logger.warn({ workDir }, 'Framework detection failed, defaulting to NestJS');
-        return 'nestjs';
-      }
+      await fs.copyFile(src, dest);
+      this.logger.info({ workDir, framework }, 'Injected default Dockerfile for framework');
     } catch (error: unknown) {
-      this.logger.error(
-        { workDir, error: error instanceof Error ? error.message : 'Unknown error' },
-        'Failed to detect framework',
+      this.logger.warn(
+        { workDir, framework, error: error instanceof Error ? error.message : 'Unknown error' },
+        'No Dockerfile in repo and framework template missing; build may fail',
       );
-      return 'nestjs'; // Default
     }
   }
 
@@ -241,8 +214,12 @@ export class DockerManager {
     framework: TFramework,
     workDir: string,
   ): Promise<string> {
-    const templateName =
-      framework === 'nestjs' ? 'docker-compose.nestjs.yml.hbs' : 'docker-compose.go.yml.hbs';
+    const templateNames: Record<TFramework, string> = {
+      nestjs: 'docker-compose.nestjs.yml.hbs',
+      go: 'docker-compose.go.yml.hbs',
+      laravel: 'docker-compose.laravel.yml.hbs',
+    };
+    const templateName = templateNames[framework];
     const templatePath = path.join(this.templatesDir, templateName);
     const templateContent = await fs.readFile(templatePath, 'utf-8');
     const template = Handlebars.compile(templateContent);
