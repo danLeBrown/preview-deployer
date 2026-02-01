@@ -113,29 +113,11 @@ export async function initCommand(): Promise<void> {
   await ConfigManager.saveConfig(config);
   console.log(chalk.green(`\nConfiguration saved to ${ConfigManager.getConfigPath()}`));
 
-  // Create example preview-config.yml
-  const exampleConfig = `# Preview Deployer Configuration
-# Place this file in your repository root as preview-config.yml
-
-framework: nestjs  # Options: nestjs, go, laravel (overrides auto-detection)
-database: postgres  # Options: postgres, mysql, mongodb
-health_check_path: /health  # Health check endpoint path
-
-# Optional: Commands run on the host before docker compose (e.g. copy .env)
-# build_commands:
-#   - cp .env.example .env
-
-# Optional: Extra infra (e.g. Redis for BullMQ). App gets REDIS_URL=redis://redis:6379
-# extra_services:
-#   - redis
-
-# Optional: Environment variables (passed to application container)
-# env:
-#   - NODE_ENV=preview
-`;
-
+  // Write example preview-config from template (single source: templates/preview-config.example.yml)
+  const templatePath = path.join(__dirname, '..', 'templates', 'preview-config.example.yml');
   const examplePath = path.join(process.cwd(), 'preview-config.example.yml');
   if (!fs.existsSync(examplePath)) {
+    const exampleConfig = fs.readFileSync(templatePath, 'utf-8');
     fs.writeFileSync(examplePath, exampleConfig, 'utf-8');
     console.log(chalk.green(`Example config created: ${examplePath}`));
   }

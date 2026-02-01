@@ -294,7 +294,7 @@ export class DockerManager {
           }
           // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
           const dependsOn = (app.depends_on as Record<string, unknown>) ?? {};
-          (dependsOn as Record<string, unknown>).redis = {};
+          (dependsOn as Record<string, unknown>).redis = { condition: 'service_started' };
           app.depends_on = dependsOn;
         }
       }
