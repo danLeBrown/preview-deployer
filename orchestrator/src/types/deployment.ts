@@ -1,16 +1,16 @@
-import { DeploymentInfo, PreviewStatus } from './preview-config';
+import { IDeploymentInfo, TPreviewStatus } from './preview-config';
 
-export interface DeploymentStore {
-  deployments: Record<number, DeploymentInfo>;
+export interface IDeploymentStore {
+  deployments: Record<number, IDeploymentInfo>;
   portAllocations: Record<number, { appPort: number; dbPort: number }>;
 }
 
-export interface DeploymentTracker {
-  getDeployment(prNumber: number): DeploymentInfo | undefined;
-  saveDeployment(deployment: DeploymentInfo): Promise<void>;
+export interface IDeploymentTracker {
+  getDeployment(prNumber: number): IDeploymentInfo | undefined;
+  saveDeployment(deployment: IDeploymentInfo): Promise<void>;
   deleteDeployment(prNumber: number): Promise<void>;
-  getAllDeployments(): DeploymentInfo[];
-  updateDeploymentStatus(prNumber: number, status: PreviewStatus): Promise<void>;
+  getAllDeployments(): IDeploymentInfo[];
+  updateDeploymentStatus(prNumber: number, status: TPreviewStatus): Promise<void>;
   updateDeploymentComment(prNumber: number, commentId: number): Promise<void>;
   allocatePorts(prNumber: number): { appPort: number; dbPort: number };
   releasePorts(prNumber: number): Promise<void>;

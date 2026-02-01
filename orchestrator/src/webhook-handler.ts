@@ -4,9 +4,8 @@ import { Logger } from 'pino';
 import { DockerManager } from './docker-manager';
 import { GitHubClient } from './github-client';
 import { NginxManager } from './nginx-manager';
-import { DeploymentTracker } from './types/deployment';
-import { PreviewConfig, WebhookPayload } from './types/preview-config';
-import { DeploymentInfo } from './types/preview-config';
+import { IDeploymentTracker } from './types/deployment';
+import { IDeploymentInfo, IPreviewConfig, IWebhookPayload } from './types/preview-config';
 
 export class WebhookHandler {
   private webhookSecret: string;
@@ -14,7 +13,7 @@ export class WebhookHandler {
   private githubClient: GitHubClient;
   private dockerManager: DockerManager;
   private nginxManager: NginxManager;
-  private tracker: DeploymentTracker;
+  private tracker: IDeploymentTracker;
   private logger: Logger;
 
   constructor(
@@ -23,7 +22,7 @@ export class WebhookHandler {
     githubClient: GitHubClient,
     dockerManager: DockerManager,
     nginxManager: NginxManager,
-    tracker: DeploymentTracker,
+    tracker: IDeploymentTracker,
     logger: Logger,
   ) {
     this.webhookSecret = webhookSecret;
@@ -62,7 +61,8 @@ export class WebhookHandler {
     return isAllowed;
   }
 
-  async handleWebhook(payload: WebhookPayload): Promise<void> {
+  async handleWebhook(payload: IWebhookPayload): Promise<void> {
+    console.log('handleWebhook', payload);
     const { action, pull_request, repository } = payload;
     const repoFullName = repository.full_name;
     const prNumber = pull_request.number;
@@ -120,7 +120,7 @@ export class WebhookHandler {
     }
   }
 
-  private async handleDeploy(payload: WebhookPayload): Promise<void> {
+  private async handleDeploy(payload: IWebhookPayload): Promise<void> {
     const { pull_request, repository } = payload;
     const prNumber = pull_request.number;
     const repoOwner = repository.owner.login;
@@ -153,7 +153,7 @@ export class WebhookHandler {
     }
 
     // Create preview config
-    const config: PreviewConfig = {
+    const config: IPreviewConfig = {
       prNumber,
       repoName,
       repoOwner,
@@ -171,7 +171,7 @@ export class WebhookHandler {
     await this.nginxManager.addPreview(prNumber, appPort);
 
     // Save deployment info
-    const deployment: DeploymentInfo = {
+    const deployment: IDeploymentInfo = {
       ...config,
       appPort,
       dbPort: 9000 + prNumber,
@@ -200,7 +200,7 @@ export class WebhookHandler {
     this.logger.info({ prNumber, url }, 'Preview deployed successfully');
   }
 
-  private async handleUpdate(payload: WebhookPayload): Promise<void> {
+  private async handleUpdate(payload: IWebhookPayload): Promise<void> {
     const { pull_request, repository } = payload;
     const prNumber = pull_request.number;
     const repoOwner = repository.owner.login;
@@ -252,7 +252,7 @@ export class WebhookHandler {
     this.logger.info({ prNumber }, 'Preview updated successfully');
   }
 
-  private async handleCleanup(payload: WebhookPayload): Promise<void> {
+  private async handleCleanup(payload: IWebhookPayload): Promise<void> {
     const { pull_request } = payload;
     const prNumber = pull_request.number;
 

@@ -1,37 +1,37 @@
-export type Framework = 'nestjs' | 'go';
-export type DatabaseType = 'postgres' | 'mysql' | 'mongodb';
-export type PreviewStatus = 'building' | 'running' | 'failed' | 'stopped';
-export type PRStatus = 'open' | 'closed' | 'merged';
+export type TFramework = 'nestjs' | 'go';
+export type TDatabaseType = 'postgres' | 'mysql' | 'mongodb';
+export type TPreviewStatus = 'building' | 'running' | 'failed' | 'stopped';
+export type TPRStatus = 'open' | 'closed' | 'merged';
 
-export interface PreviewConfig {
+export interface IPreviewConfig {
   prNumber: number;
   repoName: string;
   repoOwner: string;
   branch: string;
   commitSha: string;
   cloneUrl: string;
-  framework: Framework;
-  dbType: DatabaseType;
+  framework: TFramework;
+  dbType: TDatabaseType;
 }
 
-export interface DeploymentInfo {
+export interface IDeploymentInfo {
   prNumber: number;
   repoName: string;
   repoOwner: string;
   branch: string;
   commitSha: string;
-  framework: Framework;
-  dbType: DatabaseType;
+  framework: TFramework;
+  dbType: TDatabaseType;
   appPort: number;
   dbPort: number;
-  status: PreviewStatus;
+  status: TPreviewStatus;
   createdAt: string;
   updatedAt: string;
   url?: string;
   commentId?: number;
 }
 
-export interface WebhookPayload {
+export interface IWebhookPayload {
   action: 'opened' | 'synchronize' | 'closed' | 'reopened';
   pull_request: {
     number: number;
@@ -59,7 +59,7 @@ export interface WebhookPayload {
   };
 }
 
-export interface PortAllocation {
+export interface IPortAllocation {
   prNumber: number;
   appPort: number;
   dbPort: number;

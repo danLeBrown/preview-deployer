@@ -2,10 +2,10 @@ import * as fsSync from 'fs';
 import * as fs from 'fs/promises';
 import { Logger } from 'pino';
 
-import { DeploymentStore, DeploymentTracker } from './types/deployment';
-import { DeploymentInfo, PreviewStatus } from './types/preview-config';
+import { IDeploymentStore, IDeploymentTracker } from './types/deployment';
+import { IDeploymentInfo, TPreviewStatus } from './types/preview-config';
 
-export class FileDeploymentTracker implements DeploymentTracker {
+export class FileDeploymentTracker implements IDeploymentTracker {
   private storePath: string;
   private logger: Logger;
 
@@ -14,10 +14,10 @@ export class FileDeploymentTracker implements DeploymentTracker {
     this.logger = logger;
   }
 
-  private async loadStore(): Promise<DeploymentStore> {
+  private async loadStore(): Promise<IDeploymentStore> {
     try {
       const data = await fs.readFile(this.storePath, 'utf-8');
-      return JSON.parse(data) as DeploymentStore;
+      return JSON.parse(data) as IDeploymentStore;
     } catch (error: unknown) {
       this.logger.error(
         { error: error instanceof Error ? error.message : 'Unknown error' },
@@ -31,15 +31,15 @@ export class FileDeploymentTracker implements DeploymentTracker {
     }
   }
 
-  private async saveStore(store: DeploymentStore): Promise<void> {
+  private async saveStore(store: IDeploymentStore): Promise<void> {
     await fs.writeFile(this.storePath, JSON.stringify(store, null, 2), 'utf-8');
   }
 
-  getDeployment(prNumber: number): DeploymentInfo | undefined {
+  getDeployment(prNumber: number): IDeploymentInfo | undefined {
     // Synchronous read for immediate access (used in hot paths)
     try {
       const data = fsSync.readFileSync(this.storePath, 'utf-8');
-      const store = JSON.parse(data) as DeploymentStore;
+      const store = JSON.parse(data) as IDeploymentStore;
       return store.deployments[prNumber];
     } catch (error: unknown) {
       this.logger.error(
@@ -54,7 +54,7 @@ export class FileDeploymentTracker implements DeploymentTracker {
     }
   }
 
-  async saveDeployment(deployment: DeploymentInfo): Promise<void> {
+  async saveDeployment(deployment: IDeploymentInfo): Promise<void> {
     const store = await this.loadStore();
     store.deployments[deployment.prNumber] = deployment;
     await this.saveStore(store);
@@ -68,10 +68,10 @@ export class FileDeploymentTracker implements DeploymentTracker {
     this.logger.debug({ prNumber }, 'Deleted deployment');
   }
 
-  getAllDeployments(): DeploymentInfo[] {
+  getAllDeployments(): IDeploymentInfo[] {
     try {
       const data = fsSync.readFileSync(this.storePath, 'utf-8');
-      const store = JSON.parse(data) as DeploymentStore;
+      const store = JSON.parse(data) as IDeploymentStore;
       return Object.values(store.deployments);
     } catch (error: unknown) {
       this.logger.error(
@@ -82,7 +82,7 @@ export class FileDeploymentTracker implements DeploymentTracker {
     }
   }
 
-  async updateDeploymentStatus(prNumber: number, status: PreviewStatus): Promise<void> {
+  async updateDeploymentStatus(prNumber: number, status: TPreviewStatus): Promise<void> {
     const store = await this.loadStore();
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (store.deployments[prNumber]) {
@@ -107,7 +107,7 @@ export class FileDeploymentTracker implements DeploymentTracker {
     // Synchronous for immediate allocation
     try {
       const data = fsSync.readFileSync(this.storePath, 'utf-8');
-      const store = JSON.parse(data) as DeploymentStore;
+      const store = JSON.parse(data) as IDeploymentStore;
 
       // Check if ports already allocated
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
@@ -148,7 +148,7 @@ export class FileDeploymentTracker implements DeploymentTracker {
         // First deployment, create store
         const appPort = 8000 + prNumber;
         const dbPort = 9000 + prNumber;
-        const store: DeploymentStore = {
+        const store: IDeploymentStore = {
           deployments: {},
           portAllocations: { [prNumber]: { appPort, dbPort } },
         };

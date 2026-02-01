@@ -6,8 +6,8 @@ import * as path from 'path';
 import { Logger } from 'pino';
 import { promisify } from 'util';
 
-import { DeploymentTracker } from './types/deployment';
-import { Framework, PreviewConfig } from './types/preview-config';
+import { IDeploymentTracker } from './types/deployment';
+import { IPreviewConfig, TFramework } from './types/preview-config';
 
 const execAsync = promisify(exec);
 
@@ -15,13 +15,13 @@ export class DockerManager {
   private docker: Docker;
   private deploymentsDir: string;
   private templatesDir: string;
-  private tracker: DeploymentTracker;
+  private tracker: IDeploymentTracker;
   private logger: Logger;
 
   constructor(
     deploymentsDir: string,
     templatesDir: string,
-    tracker: DeploymentTracker,
+    tracker: IDeploymentTracker,
     logger: Logger,
   ) {
     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
@@ -32,7 +32,7 @@ export class DockerManager {
     this.logger = logger;
   }
 
-  async deployPreview(config: PreviewConfig): Promise<{ url: string; appPort: number }> {
+  async deployPreview(config: IPreviewConfig): Promise<{ url: string; appPort: number }> {
     const workDir = path.join(this.deploymentsDir, `pr-${config.prNumber}`);
     const { appPort, dbPort } = this.tracker.allocatePorts(config.prNumber);
 
@@ -186,7 +186,7 @@ export class DockerManager {
     }
   }
 
-  private async detectFramework(workDir: string): Promise<Framework> {
+  private async detectFramework(workDir: string): Promise<TFramework> {
     try {
       // Check for NestJS
       const nestCliPath = path.join(workDir, 'nest-cli.json');
@@ -238,7 +238,7 @@ export class DockerManager {
     prNumber: number,
     appPort: number,
     dbPort: number,
-    framework: Framework,
+    framework: TFramework,
     workDir: string,
   ): Promise<string> {
     const templateName =

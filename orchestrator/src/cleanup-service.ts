@@ -3,11 +3,11 @@ import { Logger } from 'pino';
 import { DockerManager } from './docker-manager';
 import { GitHubClient } from './github-client';
 import { NginxManager } from './nginx-manager';
-import { DeploymentTracker } from './types/deployment';
-import { DeploymentInfo } from './types/preview-config';
+import { IDeploymentTracker } from './types/deployment';
+import { IDeploymentInfo } from './types/preview-config';
 
 export class CleanupService {
-  private tracker: DeploymentTracker;
+  private tracker: IDeploymentTracker;
   private githubClient: GitHubClient;
   private dockerManager: DockerManager;
   private nginxManager: NginxManager;
@@ -16,7 +16,7 @@ export class CleanupService {
   private intervalId?: NodeJS.Timeout;
 
   constructor(
-    tracker: DeploymentTracker,
+    tracker: IDeploymentTracker,
     githubClient: GitHubClient,
     dockerManager: DockerManager,
     nginxManager: NginxManager,
@@ -113,7 +113,7 @@ export class CleanupService {
     this.logger.info('Cleanup completed');
   }
 
-  private async cleanupDeployment(deployment: DeploymentInfo): Promise<void> {
+  private async cleanupDeployment(deployment: IDeploymentInfo): Promise<void> {
     const { prNumber } = deployment;
 
     try {

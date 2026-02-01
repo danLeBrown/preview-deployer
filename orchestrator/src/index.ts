@@ -7,7 +7,7 @@ import { FileDeploymentTracker } from './deployment-tracker';
 import { DockerManager } from './docker-manager';
 import { GitHubClient } from './github-client';
 import { NginxManager } from './nginx-manager';
-import { WebhookPayload } from './types/preview-config';
+import { IWebhookPayload } from './types/preview-config';
 import { WebhookHandler } from './webhook-handler';
 
 // Load environment variables
@@ -128,8 +128,8 @@ app.post('/webhook/github', async (req: Request, res: Response) => {
   }
 
   try {
-    const webhookPayload = req.body as WebhookPayload;
-    await webhookHandler.handleWebhook(webhookPayload);
+    const webhookPayload = req.body as IWebhookPayload;
+    await webhookHandler.handleWebhook(webhookPayload as IWebhookPayload);
     res.json({ status: 'ok' });
   } catch (error: unknown) {
     if (error instanceof Error) {

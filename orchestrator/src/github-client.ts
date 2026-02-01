@@ -1,7 +1,7 @@
 import { Octokit } from '@octokit/rest';
 import { Logger } from 'pino';
 
-import { PRStatus } from './types/preview-config';
+import { TPRStatus } from './types/preview-config';
 
 export class GitHubClient {
   private octokit: Octokit;
@@ -52,7 +52,7 @@ export class GitHubClient {
     }
   }
 
-  async checkPRStatus(owner: string, repo: string, prNumber: number): Promise<PRStatus> {
+  async checkPRStatus(owner: string, repo: string, prNumber: number): Promise<TPRStatus> {
     try {
       const response = await this.octokit.rest.pulls.get({
         owner,
