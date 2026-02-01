@@ -67,6 +67,9 @@ export class DockerManager {
         workDir,
       );
 
+      // console.log('composeFile', composeFile);
+      console.log(await fs.readFile(composeFile, 'utf-8'));
+
       // Build and start containers
       this.logger.info({ prNumber: config.prNumber }, 'Building containers');
       await execAsync(`docker compose -f ${composeFile} up -d --build`, { cwd: workDir });
@@ -190,9 +193,24 @@ export class DockerManager {
   }
 
   private async ensureDockerfile(workDir: string, framework: TFramework): Promise<void> {
+    // check if Dockerfile/dockerfile exists in the PR directory
     if (await fileExists(workDir, 'Dockerfile')) {
+      this.logger.info({ workDir }, 'Dockerfile exists in the PR directory');
+      console.log(await fs.readFile(path.join(workDir, 'Dockerfile'), 'utf-8'));
       return;
     }
+
+    if (await fileExists(workDir, 'dockerfile')) {
+      this.logger.info({ workDir }, 'dockerfile exists in the PR directory');
+      // Normalize to Dockerfile so compose (dockerfile: Dockerfile) works on case-sensitive FS (e.g. Linux)
+      const src = path.join(workDir, 'dockerfile');
+      const dest = path.join(workDir, 'Dockerfile');
+      await fs.copyFile(src, dest);
+      this.logger.info({ workDir }, 'Copied dockerfile to Dockerfile for compose compatibility');
+      return;
+    }
+
+    // if not, use the framework template
     const templateName = `Dockerfile.${framework}`;
     const src = path.join(this.templatesDir, templateName);
     const dest = path.join(workDir, 'Dockerfile');

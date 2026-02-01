@@ -51,17 +51,21 @@ Common issues and solutions for preview-deployer.
 **Symptoms**: PR opened but no preview deployment
 
 **Solutions**:
+
 1. Check webhook is configured:
+
    ```bash
    # Via GitHub API or web interface
    ```
 
 2. Verify webhook secret matches:
+
    ```bash
    cat ~/.preview-deployer/config.yml | grep webhook_secret
    ```
 
 3. Check orchestrator logs:
+
    ```bash
    ssh root@SERVER_IP
    journalctl -u preview-deployer-orchestrator -f
@@ -80,7 +84,9 @@ Common issues and solutions for preview-deployer.
 **Symptoms**: Preview deployment fails during build
 
 **Solutions**:
+
 1. Check Docker build logs:
+
    ```bash
    ssh root@SERVER_IP
    cd /opt/preview-deployments/pr-{PR_NUMBER}
@@ -91,22 +97,38 @@ Common issues and solutions for preview-deployer.
 3. Check build commands in `preview-config.yml`
 4. Ensure dependencies are installable
 
+#### `pnpm install --prod` fails (e.g. prepare script / husky)
+
+**Symptoms**: Build fails at `RUN pnpm install --frozen-lockfile --prod` (or similar) with exit code 1.
+
+**Cause**: Lifecycle scripts like `prepare` or `postinstall` in `package.json` can depend on devDependencies (e.g. **husky**). With `--prod`, devDependencies are not installed, so the script fails when it runs.
+
+**Fixes (in your app or its Dockerfile)**:
+
+- **Husky**: Set `ENV HUSKY=0` before the install step in your Dockerfile so the prepare script is a no-op in Docker/CI.
+- **General**: Move the script’s dependency to `dependencies` if it must run in production builds, or in the Dockerfile run install with `--ignore-scripts` and then run only the commands you need (e.g. build).
+- **Preview-deployer**: When the repo has no Dockerfile, we inject a default that sets `HUSKY=0` so this case is avoided for our template.
+
 ### Health Check Failures
 
 **Symptoms**: Containers start but preview URL doesn't work
 
 **Solutions**:
+
 1. Verify health check endpoint exists:
+
    ```bash
    curl http://localhost:{APP_PORT}/health
    ```
 
 2. Check health check path in `preview-config.yml`:
+
    ```yaml
-   health_check_path: /health  # Must match your app's endpoint
+   health_check_path: /health # Must match your app's endpoint
    ```
 
 3. Check container logs:
+
    ```bash
    docker logs pr-{PR_NUMBER}-app
    ```
@@ -121,13 +143,16 @@ Common issues and solutions for preview-deployer.
 **Symptoms**: "Port already in use" error
 
 **Solutions**:
+
 1. Check allocated ports:
+
    ```bash
    ssh root@SERVER_IP
    cat /opt/preview-deployer/deployments.json | jq '.portAllocations'
    ```
 
 2. Find process using port:
+
    ```bash
    lsof -i :{PORT}
    ```
@@ -142,23 +167,28 @@ Common issues and solutions for preview-deployer.
 **Symptoms**: Preview URL returns 502 Bad Gateway
 
 **Solutions**:
+
 1. Check nginx config syntax:
+
    ```bash
    ssh root@SERVER_IP
    nginx -t
    ```
 
 2. Verify preview config exists:
+
    ```bash
    cat /etc/nginx/preview-configs/pr-{PR_NUMBER}.conf
    ```
 
 3. Check nginx error logs:
+
    ```bash
    tail -f /var/log/nginx/error.log
    ```
 
 4. Verify app container is running:
+
    ```bash
    docker ps | grep pr-{PR_NUMBER}
    ```
@@ -175,17 +205,21 @@ Common issues and solutions for preview-deployer.
 **Symptoms**: Preview works initially but stops responding
 
 **Solutions**:
+
 1. Check container status:
+
    ```bash
    docker ps -a | grep pr-{PR_NUMBER}
    ```
 
 2. View container logs:
+
    ```bash
    docker logs pr-{PR_NUMBER}-app
    ```
 
 3. Check resource usage:
+
    ```bash
    docker stats pr-{PR_NUMBER}-app
    ```
@@ -201,17 +235,21 @@ Common issues and solutions for preview-deployer.
 **Symptoms**: App can't connect to database
 
 **Solutions**:
+
 1. Verify database container is running:
+
    ```bash
    docker ps | grep pr-{PR_NUMBER}-db
    ```
 
 2. Check database logs:
+
    ```bash
    docker logs pr-{PR_NUMBER}-db
    ```
 
 3. Test database connection:
+
    ```bash
    docker exec pr-{PR_NUMBER}-db pg_isready -U preview
    ```
@@ -226,18 +264,22 @@ Common issues and solutions for preview-deployer.
 **Symptoms**: Old previews not being cleaned up
 
 **Solutions**:
+
 1. Check cleanup service is running:
+
    ```bash
    ssh root@SERVER_IP
    journalctl -u preview-deployer-orchestrator | grep cleanup
    ```
 
 2. Verify TTL configuration:
+
    ```bash
    cat ~/.preview-deployer/config.yml | grep cleanup_ttl_days
    ```
 
 3. Manually trigger cleanup:
+
    ```bash
    curl -X DELETE http://SERVER_IP:3000/api/previews/{PR_NUMBER}
    ```
@@ -252,6 +294,7 @@ Common issues and solutions for preview-deployer.
 ### Slow Builds
 
 **Solutions**:
+
 1. Use Docker layer caching
 2. Optimize Dockerfile (multi-stage builds)
 3. Use smaller base images
@@ -260,6 +303,7 @@ Common issues and solutions for preview-deployer.
 ### High Resource Usage
 
 **Solutions**:
+
 1. Reduce max concurrent previews
 2. Lower container resource limits
 3. Use smaller droplet size
@@ -270,7 +314,9 @@ Common issues and solutions for preview-deployer.
 **Symptoms**: Droplet runs out of memory
 
 **Solutions**:
+
 1. Check memory usage:
+
    ```bash
    free -h
    docker stats
@@ -285,7 +331,9 @@ Common issues and solutions for preview-deployer.
 ### Webhook Signature Verification Failed
 
 **Solutions**:
+
 1. Verify webhook secret matches:
+
    ```bash
    cat ~/.preview-deployer/config.yml | grep webhook_secret
    ```
@@ -296,6 +344,7 @@ Common issues and solutions for preview-deployer.
 ### Unauthorized Repository Access
 
 **Solutions**:
+
 1. Check `ALLOWED_REPOS` environment variable
 2. Verify repository format: `owner/repo`
 3. Check orchestrator logs for rejection messages
@@ -335,12 +384,14 @@ journalctl -u preview-deployer-orchestrator -n 50
 ### Manual Testing
 
 Test orchestrator API:
+
 ```bash
 curl http://SERVER_IP:3000/health
 curl http://SERVER_IP:3000/api/previews
 ```
 
 Test webhook:
+
 ```bash
 # Generate signature
 SECRET="your-webhook-secret"

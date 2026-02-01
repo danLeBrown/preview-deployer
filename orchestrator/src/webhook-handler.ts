@@ -62,7 +62,6 @@ export class WebhookHandler {
   }
 
   async handleWebhook(payload: IWebhookPayload): Promise<void> {
-    console.log('handleWebhook', payload);
     const { action, pull_request, repository } = payload;
     const repoFullName = repository.full_name;
     const prNumber = pull_request.number;

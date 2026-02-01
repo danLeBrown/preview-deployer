@@ -34,8 +34,10 @@ export async function readPackageJson(dir: string): Promise<{
 /** True if package.json has the given dependency or devDependency. */
 export async function hasPackageJsonDependency(dir: string, name: string): Promise<boolean> {
   const pkg = await readPackageJson(dir);
-  if (!pkg) return false;
-  return !!(pkg.dependencies?.[name] ?? pkg.devDependencies?.[name]);
+  if (!pkg) {
+    return false;
+  }
+  return Boolean(pkg.dependencies?.[name] ?? pkg.devDependencies?.[name]);
 }
 
 /** Read and parse composer.json; returns null if missing or invalid. */
@@ -58,8 +60,10 @@ export async function readComposerJson(
 /** True if composer.json has the given require or require-dev. */
 export async function hasComposerDependency(dir: string, name: string): Promise<boolean> {
   const composer = await readComposerJson(dir);
-  if (!composer) return false;
-  return !!(composer.require?.[name] ?? composer['require-dev']?.[name]);
+  if (!composer) {
+    return false;
+  }
+  return Boolean(composer.require?.[name] ?? composer['require-dev']?.[name]);
 }
 
 /** A detector returns the framework if the repo matches, otherwise null. */
@@ -67,20 +71,28 @@ export type FrameworkDetector = (workDir: string) => Promise<TFramework | null>;
 
 /** NestJS: nest-cli.json or @nestjs/core in package.json. */
 export const detectNestJS: FrameworkDetector = async (workDir: string) => {
-  if (await fileExists(workDir, 'nest-cli.json')) return 'nestjs';
-  if (await hasPackageJsonDependency(workDir, '@nestjs/core')) return 'nestjs';
+  if (await fileExists(workDir, 'nest-cli.json')) {
+    return 'nestjs';
+  }
+  if (await hasPackageJsonDependency(workDir, '@nestjs/core')) {
+    return 'nestjs';
+  }
   return null;
 };
 
 /** Go: go.mod present. */
 export const detectGo: FrameworkDetector = async (workDir: string) => {
-  if (await fileExists(workDir, 'go.mod')) return 'go';
+  if (await fileExists(workDir, 'go.mod')) {
+    return 'go';
+  }
   return null;
 };
 
 /** Laravel: laravel/framework in composer.json. */
 export const detectLaravel: FrameworkDetector = async (workDir: string) => {
-  if (await hasComposerDependency(workDir, 'laravel/framework')) return 'laravel';
+  if (await hasComposerDependency(workDir, 'laravel/framework')) {
+    return 'laravel';
+  }
   return null;
 };
 
@@ -97,7 +109,9 @@ const DETECTORS: FrameworkDetector[] = [detectNestJS, detectGo, detectLaravel];
 export async function detectFramework(workDir: string): Promise<TFramework> {
   for (const detector of DETECTORS) {
     const framework = await detector(workDir);
-    if (framework) return framework;
+    if (framework) {
+      return framework;
+    }
   }
   return DEFAULT_FRAMEWORK;
 }
