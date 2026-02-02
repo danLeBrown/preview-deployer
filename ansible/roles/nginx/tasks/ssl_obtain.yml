@@ -1,0 +1,60 @@
+---
+# Run after nginx is up. Obtains certificate when missing, then re-deploys nginx with 443.
+
+- name: Obtain Let's Encrypt certificate (webroot)
+  ansible.builtin.command:
+    cmd: >
+      certbot certonly
+      --webroot -w /var/www/certbot
+      -d {{ preview_domain }}
+      --non-interactive
+      --agree-tos
+      -m {{ ssl_email }}
+  register: certbot_run
+  when:
+    - preview_domain is defined and preview_domain | length > 0
+    - not ssl_cert_exists | default(false)
+  changed_when: certbot_run.rc == 0
+
+- name: Re-check SSL certificate after certbot
+  ansible.builtin.stat:
+    path: '/etc/letsencrypt/live/{{ preview_domain }}/fullchain.pem'
+  register: ssl_cert_stat_after
+  when:
+    - preview_domain is defined and preview_domain | length > 0
+    - certbot_run is changed | default(false) or (certbot_run is succeeded | default(false) and certbot_run.rc == 0)
+
+- name: Set SSL cert exists after obtain
+  ansible.builtin.set_fact:
+    ssl_cert_exists: '{{ ssl_cert_stat_after.stat.exists | default(false) }}'
+  when:
+    - preview_domain is defined and preview_domain | length > 0
+    - ssl_cert_stat_after is defined
+    - ssl_cert_stat_after.stat is defined
+
+- name: Ensure certbot SSL options exist (required when using certonly + manual nginx)
+  block:
+    - name: Deploy options-ssl-nginx.conf for nginx SSL block
+      ansible.builtin.template:
+        src: options-ssl-nginx.conf.j2
+        dest: /etc/letsencrypt/options-ssl-nginx.conf
+        mode: '0644'
+    - name: Generate ssl-dhparams.pem for nginx
+      ansible.builtin.command:
+        cmd: openssl dhparam -out /etc/letsencrypt/ssl-dhparams.pem 2048
+        creates: /etc/letsencrypt/ssl-dhparams.pem
+  when:
+    - preview_domain is defined and preview_domain | length > 0
+    - ssl_cert_stat_after is defined
+    - ssl_cert_stat_after.stat.exists | default(false)
+
+- name: Re-deploy nginx configuration to enable HTTPS (443)
+  ansible.builtin.template:
+    src: nginx.conf.j2
+    dest: /etc/nginx/nginx.conf
+    backup: yes
+  notify: restart nginx
+  when:
+    - preview_domain is defined and preview_domain | length > 0
+    - ssl_cert_stat_after is defined
+    - ssl_cert_stat_after.stat.exists | default(false)

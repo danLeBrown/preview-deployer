@@ -9,6 +9,11 @@
     name: nginx
     state: present
 
+# Optional SSL: install certbot, webroot, and set ssl_cert_exists for template
+- name: Include SSL preparation (when preview_domain is set)
+  ansible.builtin.include_tasks: ssl.yml
+  when: preview_domain is defined and preview_domain | length > 0
+
 - name: Create nginx directory structure (root-owned)
   file:
     path: '{{ item }}'
@@ -52,6 +57,11 @@
   register: nginx_test
   changed_when: false
   failed_when: nginx_test.rc != 0
+
+# Optional SSL: obtain certificate (when missing) and re-deploy nginx with 443
+- name: Include SSL certificate obtain (when preview_domain is set)
+  ansible.builtin.include_tasks: ssl_obtain.yml
+  when: preview_domain is defined and preview_domain | length > 0
 
 - name: Display nginx status
   debug:

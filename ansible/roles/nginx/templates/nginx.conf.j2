@@ -59,12 +59,42 @@ http {
     ##
     # Preview Deployer - default server with dynamic preview locations
     ##
+{% if ssl_cert_exists | default(false) %}
+    # HTTP → HTTPS redirect (when SSL is enabled); keep ACME on 80 for renewal
     server {
         listen 80 default_server;
         listen [::]:80 default_server;
-        server_name _;
+        server_name {{ preview_domain }} _;
+        location /.well-known/acme-challenge/ {
+            root /var/www/certbot;
+        }
+        location / {
+            return 301 https://$host$request_uri;
+        }
+    }
+{% endif %}
+    server {
+{% if ssl_cert_exists | default(false) %}
+        listen 443 ssl default_server;
+        listen [::]:443 ssl default_server;
+        ssl_certificate /etc/letsencrypt/live/{{ preview_domain }}/fullchain.pem;
+        ssl_certificate_key /etc/letsencrypt/live/{{ preview_domain }}/privkey.pem;
+        include /etc/letsencrypt/options-ssl-nginx.conf;
+        ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+{% else %}
+        listen 80 default_server;
+        listen [::]:80 default_server;
+{% endif %}
+        server_name {{ preview_domain | default('_') }};
 
-        # GitHub webhook → orchestrator (so GitHub can POST to http://server/webhook/github)
+{% if preview_domain is defined and preview_domain | length > 0 %}
+        # ACME HTTP-01 challenge (Let's Encrypt / certbot)
+        location /.well-known/acme-challenge/ {
+            root /var/www/certbot;
+        }
+{% endif %}
+
+        # GitHub webhook → orchestrator (so GitHub can POST to http(s)://server/webhook/github)
         location /webhook/ {
             proxy_pass http://localhost:{{ orchestrator_port | default(3000) }};
             proxy_http_version 1.1;

@@ -154,6 +154,17 @@ cleanup_ttl_days: 7
 max_concurrent_previews: 10
 ```
 
+### Optional SSL (Let's Encrypt)
+
+When you have a domain pointing at the server, set these so the nginx role obtains a certificate and serves HTTPS:
+
+```yaml
+preview_domain: preview.example.com # FQDN that resolves to the droplet
+ssl_email: admin@example.com # Used for Let's Encrypt agree-tos
+```
+
+Then set `preview_base_url` (and orchestrator env) to `https://preview.example.com` so PR comments get HTTPS preview links. Certbot runs via the nginx role (webroot); HTTP is redirected to HTTPS and ACME challenges are served on port 80 for renewal.
+
 ## Docker Compose Templates
 
 Templates are located in `orchestrator/templates/`:
@@ -183,6 +194,8 @@ deploy:
 ```
 
 ## Nginx Configuration
+
+The nginx role installs nginx and a default server block (port 80, or 80+443 when SSL is enabled). Optional SSL is handled inside the same role: when `preview_domain` and `ssl_email` are set, it installs certbot, obtains a certificate (webroot), and re-deploys nginx with listen 443 and HTTP→HTTPS redirect.
 
 Preview configs are generated in `/etc/nginx/preview-configs/`. That directory is owned by the deployment user (e.g. `preview-deployer`) so the orchestrator can create and remove config files without root. After writing a config, the orchestrator runs `nginx -t` and `nginx -s reload` via sudo; Ansible deploys a sudoers fragment at `/etc/sudoers.d/preview-deployer-nginx` so the deployment user can run only those two nginx commands without a password. The orchestrator systemd unit has `NoNewPrivileges=false` so that sudo can be used for this limited reload, and `ReadWritePaths` includes `/var/log/nginx` and `/run` so the nginx child process can write its error log and pid file when testing/reloading.
 

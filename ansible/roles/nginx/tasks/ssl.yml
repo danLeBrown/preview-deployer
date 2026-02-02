@@ -1,0 +1,46 @@
+---
+# Optional SSL (Let's Encrypt) for preview deployer. Include when preview_domain is set.
+# Installs certbot, prepares ACME webroot, checks for existing cert, and obtains cert if missing.
+
+- name: Install certbot and nginx plugin
+  apt:
+    name:
+      - certbot
+      - python3-certbot-nginx
+    state: present
+  when: preview_domain is defined and preview_domain | length > 0
+
+- name: Create webroot for ACME HTTP-01 challenge
+  file:
+    path: /var/www/certbot
+    state: directory
+    mode: '0755'
+    owner: root
+    group: root
+  when: preview_domain is defined and preview_domain | length > 0
+
+- name: Check if SSL certificate already exists
+  ansible.builtin.stat:
+    path: '/etc/letsencrypt/live/{{ preview_domain }}/fullchain.pem'
+  register: ssl_cert_stat
+  when: preview_domain is defined and preview_domain | length > 0
+
+- name: Set SSL cert exists fact
+  ansible.builtin.set_fact:
+    ssl_cert_exists: '{{ ssl_cert_stat.stat.exists | default(false) }}'
+  when: preview_domain is defined and preview_domain | length > 0
+
+- name: Ensure certbot SSL options exist when cert already present
+  block:
+    - name: Deploy options-ssl-nginx.conf for nginx SSL block
+      ansible.builtin.template:
+        src: options-ssl-nginx.conf.j2
+        dest: /etc/letsencrypt/options-ssl-nginx.conf
+        mode: '0644'
+    - name: Generate ssl-dhparams.pem for nginx
+      ansible.builtin.command:
+        cmd: openssl dhparam -out /etc/letsencrypt/ssl-dhparams.pem 2048
+        creates: /etc/letsencrypt/ssl-dhparams.pem
+  when:
+    - preview_domain is defined and preview_domain | length > 0
+    - ssl_cert_stat.stat.exists | default(false)

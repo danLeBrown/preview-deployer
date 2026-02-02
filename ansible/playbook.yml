@@ -6,6 +6,9 @@
     deployment_user: preview-deployer
     orchestrator_dir: /opt/preview-deployer
     orchestrator_port: 3000
+    # Optional SSL (Let's Encrypt). Set when you have a domain pointing at the server.
+    # preview_domain: preview.example.com
+    # ssl_email: admin@example.com
 
   roles:
     - docker
