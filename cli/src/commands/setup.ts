@@ -123,7 +123,7 @@ export async function setupCommand(): Promise<void> {
 
     // Get outputs
     const outputs = await terraform.getOutputs();
-    const serverIp = outputs.server_ip.value;
+    const serverIp = outputs.reserved_ip.value;
 
     console.log(chalk.green(`\nDroplet created: ${serverIp}`));
 

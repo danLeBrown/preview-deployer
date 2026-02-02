@@ -66,10 +66,9 @@ resource "digitalocean_tag" "preview_deployer" {
 }
 
 # Reserved IP (optional but recommended for stability)
-# resource "digitalocean_reserved_ip" "preview_deployer" {
-#   region = var.region
-#   tags   = [digitalocean_tag.preview_deployer.id]
-# }
+resource "digitalocean_reserved_ip" "preview_deployer" {
+  region = var.region
+}
 
 # Droplet Resource
 resource "digitalocean_droplet" "preview_deployer" {
@@ -112,7 +111,7 @@ resource "digitalocean_monitor_alert" "preview_deployer_cpu_alert" {
 }
 
 # Assign reserved IP to droplet
-# resource "digitalocean_reserved_ip_assignment" "preview_deployer" {
-#   ip_address = digitalocean_reserved_ip.preview_deployer.ip_address
-#   droplet_id = digitalocean_droplet.preview_deployer.id
-# }
+resource "digitalocean_reserved_ip_assignment" "preview_deployer" {
+  ip_address = digitalocean_reserved_ip.preview_deployer.ip_address
+  droplet_id = digitalocean_droplet.preview_deployer.id
+}
