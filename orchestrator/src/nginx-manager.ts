@@ -25,45 +25,57 @@ export class NginxManager {
     this.template = Handlebars.compile(templateContent);
   }
 
-  async addPreview(prNumber: number, appPort: number): Promise<void> {
-    const configPath = path.join(this.configDir, `pr-${prNumber}.conf`);
-    const config = this.generateNginxConfig(prNumber, appPort);
+  async addPreview(projectSlug: string, prNumber: number, appPort: number): Promise<void> {
+    const configFileName = `${projectSlug}-pr-${prNumber}.conf`;
+    const configPath = path.join(this.configDir, configFileName);
+    const config = this.generateNginxConfig(projectSlug, prNumber, appPort);
 
     try {
       await fs.writeFile(configPath, config, { mode: 0o644 });
-      this.logger.info({ prNumber, appPort, configPath }, 'Created nginx config');
+      this.logger.info({ projectSlug, prNumber, appPort, configPath }, 'Created nginx config');
       await this.reloadNginx();
     } catch (error: unknown) {
       this.logger.error(
-        { prNumber, appPort, error: error instanceof Error ? error.message : 'Unknown error' },
+        {
+          projectSlug,
+          prNumber,
+          appPort,
+          error: error instanceof Error ? error.message : 'Unknown error',
+        },
         'Failed to add nginx preview config',
       );
       throw error;
     }
   }
 
-  async removePreview(prNumber: number): Promise<void> {
-    const configPath = path.join(this.configDir, `pr-${prNumber}.conf`);
+  async removePreview(projectSlug: string, prNumber: number): Promise<void> {
+    const configFileName = `${projectSlug}-pr-${prNumber}.conf`;
+    const configPath = path.join(this.configDir, configFileName);
 
     try {
       await fs.unlink(configPath);
-      this.logger.info({ prNumber, configPath }, 'Removed nginx config');
+      this.logger.info({ projectSlug, prNumber, configPath }, 'Removed nginx config');
       await this.reloadNginx();
     } catch (error: unknown) {
       // Ignore error if file doesn't exist
       if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
         this.logger.error(
-          { prNumber, error: error instanceof Error ? error.message : 'Unknown error' },
+          {
+            projectSlug,
+            prNumber,
+            error: error instanceof Error ? error.message : 'Unknown error',
+          },
           'Failed to remove nginx config',
         );
         throw error;
       }
-      this.logger.warn({ prNumber }, 'Nginx config file not found, skipping removal');
+      this.logger.warn({ projectSlug, prNumber }, 'Nginx config file not found, skipping removal');
     }
   }
 
-  private generateNginxConfig(prNumber: number, appPort: number): string {
+  private generateNginxConfig(projectSlug: string, prNumber: number, appPort: number): string {
     return this.template({
+      projectSlug,
       prNumber,
       appPort,
     });

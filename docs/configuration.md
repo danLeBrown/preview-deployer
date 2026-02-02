@@ -200,7 +200,7 @@ The nginx role installs nginx and a default server block (port 80, or 80+443 whe
 Preview configs are generated in `/etc/nginx/preview-configs/`. That directory is owned by the deployment user (e.g. `preview-deployer`) so the orchestrator can create and remove config files without root. After writing a config, the orchestrator runs `nginx -t` and `nginx -s reload` via sudo; Ansible deploys a sudoers fragment at `/etc/sudoers.d/preview-deployer-nginx` so the deployment user can run only those two nginx commands without a password. The orchestrator systemd unit has `NoNewPrivileges=false` so that sudo can be used for this limited reload, and `ReadWritePaths` includes `/var/log/nginx` and `/run` so the nginx child process can write its error log and pid file when testing/reloading.
 
 ```nginx
-location /pr-{PR_NUMBER}/ {
+location /{PROJECT_SLUG}/pr-{PR_NUMBER}/ {
     proxy_pass http://localhost:{APP_PORT}/;
     proxy_http_version 1.1;
     proxy_set_header Upgrade $http_upgrade;
@@ -348,8 +348,8 @@ journalctl -u preview-deployer-orchestrator -f
 View container logs:
 
 ```bash
-docker logs pr-{PR_NUMBER}-app
-docker logs pr-{PR_NUMBER}-db
+docker logs {projectSlug}-pr-{PR_NUMBER}-app
+docker logs {projectSlug}-pr-{PR_NUMBER}-db
 ```
 
 ### Nginx Logs

@@ -1,7 +1,7 @@
 # Redis extra service (BullMQ, cache, etc.). Merged into compose when extra_services: [redis].
 # App receives REDIS_URL=redis://redis:6379 and depends_on: redis.
 image: redis:7-alpine
-container_name: pr-{{prNumber}}-redis
+container_name: {{projectSlug}}-pr-{{prNumber}}-redis
 restart: unless-stopped
 deploy:
   resources:

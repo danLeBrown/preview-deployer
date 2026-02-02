@@ -35,12 +35,12 @@ export class FileDeploymentTracker implements IDeploymentTracker {
     await fs.writeFile(this.storePath, JSON.stringify(store, null, 2), 'utf-8');
   }
 
-  getDeployment(prNumber: number): IDeploymentInfo | undefined {
+  getDeployment(deploymentId: string): IDeploymentInfo | undefined {
     // Synchronous read for immediate access (used in hot paths)
     try {
       const data = fsSync.readFileSync(this.storePath, 'utf-8');
       const store = JSON.parse(data) as IDeploymentStore;
-      return store.deployments[prNumber];
+      return store.deployments[deploymentId];
     } catch (error: unknown) {
       this.logger.error(
         { error: error instanceof Error ? error.message : 'Unknown error' },
@@ -56,16 +56,16 @@ export class FileDeploymentTracker implements IDeploymentTracker {
 
   async saveDeployment(deployment: IDeploymentInfo): Promise<void> {
     const store = await this.loadStore();
-    store.deployments[deployment.prNumber] = deployment;
+    store.deployments[deployment.deploymentId] = deployment;
     await this.saveStore(store);
-    this.logger.debug({ prNumber: deployment.prNumber }, 'Saved deployment');
+    this.logger.debug({ deploymentId: deployment.deploymentId }, 'Saved deployment');
   }
 
-  async deleteDeployment(prNumber: number): Promise<void> {
+  async deleteDeployment(deploymentId: string): Promise<void> {
     const store = await this.loadStore();
-    delete store.deployments[prNumber];
+    delete store.deployments[deploymentId];
     await this.saveStore(store);
-    this.logger.debug({ prNumber }, 'Deleted deployment');
+    this.logger.debug({ deploymentId }, 'Deleted deployment');
   }
 
   getAllDeployments(): IDeploymentInfo[] {
@@ -82,61 +82,61 @@ export class FileDeploymentTracker implements IDeploymentTracker {
     }
   }
 
-  async updateDeploymentStatus(prNumber: number, status: TPreviewStatus): Promise<void> {
+  async updateDeploymentStatus(deploymentId: string, status: TPreviewStatus): Promise<void> {
     const store = await this.loadStore();
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-    if (store.deployments[prNumber]) {
-      store.deployments[prNumber].status = status;
-      store.deployments[prNumber].updatedAt = new Date().toISOString();
+    if (store.deployments[deploymentId]) {
+      store.deployments[deploymentId].status = status;
+      store.deployments[deploymentId].updatedAt = new Date().toISOString();
       await this.saveStore(store);
-      this.logger.debug({ prNumber, status }, 'Updated deployment status');
+      this.logger.debug({ deploymentId, status }, 'Updated deployment status');
     }
   }
 
-  async updateDeploymentComment(prNumber: number, commentId: number): Promise<void> {
+  async updateDeploymentComment(deploymentId: string, commentId: number): Promise<void> {
     const store = await this.loadStore();
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-    if (store.deployments[prNumber]) {
-      store.deployments[prNumber].commentId = commentId;
+    if (store.deployments[deploymentId]) {
+      store.deployments[deploymentId].commentId = commentId;
       await this.saveStore(store);
-      this.logger.debug({ prNumber, commentId }, 'Updated deployment comment ID');
+      this.logger.debug({ deploymentId, commentId }, 'Updated deployment comment ID');
     }
   }
 
-  allocatePorts(prNumber: number): { appPort: number; dbPort: number } {
-    // Synchronous for immediate allocation
+  allocatePorts(deploymentId: string): { appPort: number; dbPort: number } {
+    const APP_BASE = 8000;
+    const DB_BASE = 9000;
+
     try {
       const data = fsSync.readFileSync(this.storePath, 'utf-8');
       const store = JSON.parse(data) as IDeploymentStore;
 
-      // Check if ports already allocated
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-      if (store.portAllocations[prNumber]) {
-        return store.portAllocations[prNumber];
+      if (store.portAllocations[deploymentId]) {
+        return store.portAllocations[deploymentId];
       }
 
-      // Allocate ports: app = 8000 + prNumber, db = 9000 + prNumber
-      const appPort = 8000 + prNumber;
-      const dbPort = 9000 + prNumber;
-
-      // Validate port range
-      if (appPort > 65535 || dbPort > 65535) {
-        throw new Error(`Port allocation out of range for PR #${prNumber}`);
-      }
-
-      // Check for collisions
       const allocatedPorts = Object.values(store.portAllocations);
-      const appCollision = allocatedPorts.some((p) => p.appPort === appPort);
-      const dbCollision = allocatedPorts.some((p) => p.dbPort === dbPort);
+      const usedApp = new Set(allocatedPorts.map((p) => p.appPort));
+      const usedDb = new Set(allocatedPorts.map((p) => p.dbPort));
 
-      if (appCollision || dbCollision) {
-        throw new Error(`Port collision detected for PR #${prNumber}`);
+      let appPort = APP_BASE;
+      while (usedApp.has(appPort) && appPort <= 65535) {
+        appPort++;
+      }
+      let dbPort = DB_BASE;
+      while (usedDb.has(dbPort) && dbPort <= 65535) {
+        dbPort++;
       }
 
-      store.portAllocations[prNumber] = { appPort, dbPort };
+      if (appPort > 65535 || dbPort > 65535) {
+        throw new Error(`Port allocation exhausted for deployment ${deploymentId}`);
+      }
+
+      store.portAllocations[deploymentId] = { appPort, dbPort };
       fsSync.writeFileSync(this.storePath, JSON.stringify(store, null, 2), 'utf-8');
 
-      this.logger.info({ prNumber, appPort, dbPort }, 'Allocated ports');
+      this.logger.info({ deploymentId, appPort, dbPort }, 'Allocated ports');
       return { appPort, dbPort };
     } catch (error: unknown) {
       if (error instanceof Error) {
@@ -145,30 +145,28 @@ export class FileDeploymentTracker implements IDeploymentTracker {
         this.logger.error({ error: 'Unknown error' }, 'Failed to allocate ports');
       }
       if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-        // First deployment, create store
-        const appPort = 8000 + prNumber;
-        const dbPort = 9000 + prNumber;
         const store: IDeploymentStore = {
           deployments: {},
-          portAllocations: { [prNumber]: { appPort, dbPort } },
+          portAllocations: { [deploymentId]: { appPort: APP_BASE, dbPort: DB_BASE } },
         };
         fsSync.writeFileSync(this.storePath, JSON.stringify(store, null, 2), 'utf-8');
-        return { appPort, dbPort };
+        this.logger.info({ deploymentId, appPort: APP_BASE, dbPort: DB_BASE }, 'Allocated ports');
+        return { appPort: APP_BASE, dbPort: DB_BASE };
       }
       throw error;
     }
   }
 
-  async releasePorts(prNumber: number): Promise<void> {
+  async releasePorts(deploymentId: string): Promise<void> {
     const store = await this.loadStore();
-    delete store.portAllocations[prNumber];
+    delete store.portAllocations[deploymentId];
     await this.saveStore(store);
-    this.logger.debug({ prNumber }, 'Released ports');
+    this.logger.debug({ deploymentId }, 'Released ports');
   }
 
-  getDeploymentAge(prNumber: number): number {
+  getDeploymentAge(deploymentId: string): number {
     try {
-      const deployment = this.getDeployment(prNumber);
+      const deployment = this.getDeployment(deploymentId);
       if (!deployment) {
         return Infinity; // Not found, consider it old
       }
@@ -178,7 +176,7 @@ export class FileDeploymentTracker implements IDeploymentTracker {
       return diffMs / (1000 * 60 * 60 * 24); // Convert to days
     } catch (error: unknown) {
       this.logger.error(
-        { prNumber, error: error instanceof Error ? error.message : 'Unknown error' },
+        { deploymentId, error: error instanceof Error ? error.message : 'Unknown error' },
         'Failed to get deployment age',
       );
       return Infinity;

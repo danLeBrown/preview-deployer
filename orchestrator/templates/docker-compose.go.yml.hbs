@@ -3,7 +3,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: pr-{{prNumber}}-app
+    container_name: {{projectSlug}}-pr-{{prNumber}}-app
     ports:
       - "{{appPort}}:8080"
     environment:
@@ -30,7 +30,7 @@ services:
 
   db:
     image: postgres:15-alpine
-    container_name: pr-{{prNumber}}-db
+    container_name: {{projectSlug}}-pr-{{prNumber}}-db
     environment:
       - POSTGRES_USER=preview
       - POSTGRES_PASSWORD=preview
@@ -38,7 +38,7 @@ services:
     ports:
       - "{{dbPort}}:5432"
     volumes:
-      - pr-{{prNumber}}-db:/var/lib/postgresql/data
+      - {{projectSlug}}-pr-{{prNumber}}-db:/var/lib/postgresql/data
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U preview"]
@@ -56,4 +56,4 @@ services:
           memory: 256M
 
 volumes:
-  pr-{{prNumber}}-db:
+  {{projectSlug}}-pr-{{prNumber}}-db:

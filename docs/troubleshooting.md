@@ -89,8 +89,9 @@ Common issues and solutions for preview-deployer.
 
    ```bash
    ssh root@SERVER_IP
-   cd /opt/preview-deployments/pr-{PR_NUMBER}
-   docker compose logs app
+   # Work dir is {projectSlug}/pr-{PR_NUMBER} (e.g. myorg-myapp/pr-12)
+   cd /opt/preview-deployments/{projectSlug}/pr-{PR_NUMBER}
+   docker compose -p {deploymentId} logs app
    ```
 
 2. Verify Dockerfile exists and is correct
@@ -130,12 +131,12 @@ Common issues and solutions for preview-deployer.
 3. Check container logs:
 
    ```bash
-   docker logs pr-{PR_NUMBER}-app
+   docker logs {projectSlug}-pr-{PR_NUMBER}-app
    ```
 
 4. Verify app is listening on correct port:
    ```bash
-   docker exec pr-{PR_NUMBER}-app netstat -tlnp
+   docker exec {projectSlug}-pr-{PR_NUMBER}-app netstat -tlnp
    ```
 
 ### Port Conflicts
@@ -178,7 +179,7 @@ Common issues and solutions for preview-deployer.
 2. Verify preview config exists:
 
    ```bash
-   cat /etc/nginx/preview-configs/pr-{PR_NUMBER}.conf
+   cat /etc/nginx/preview-configs/{projectSlug}-pr-{PR_NUMBER}.conf
    ```
 
 3. Check nginx error logs:
@@ -190,12 +191,12 @@ Common issues and solutions for preview-deployer.
 4. Verify app container is running:
 
    ```bash
-   docker ps | grep pr-{PR_NUMBER}
+   docker ps | grep {projectSlug}-pr-{PR_NUMBER}
    ```
 
 5. Test proxy directly:
    ```bash
-   curl -H "Host: SERVER_IP" http://localhost/pr-{PR_NUMBER}/
+   curl -H "Host: SERVER_IP" http://localhost/{projectSlug}/pr-{PR_NUMBER}/
    ```
 
 ## Runtime Issues
@@ -209,24 +210,24 @@ Common issues and solutions for preview-deployer.
 1. Check container status:
 
    ```bash
-   docker ps -a | grep pr-{PR_NUMBER}
+   docker ps -a | grep {projectSlug}-pr-{PR_NUMBER}
    ```
 
 2. View container logs:
 
    ```bash
-   docker logs pr-{PR_NUMBER}-app
+   docker logs {projectSlug}-pr-{PR_NUMBER}-app
    ```
 
 3. Check resource usage:
 
    ```bash
-   docker stats pr-{PR_NUMBER}-app
+   docker stats {projectSlug}-pr-{PR_NUMBER}-app
    ```
 
 4. Restart container:
    ```bash
-   cd /opt/preview-deployments/pr-{PR_NUMBER}
+   cd /opt/preview-deployments/{projectSlug}/pr-{PR_NUMBER}
    docker compose restart app
    ```
 
@@ -239,24 +240,24 @@ Common issues and solutions for preview-deployer.
 1. Verify database container is running:
 
    ```bash
-   docker ps | grep pr-{PR_NUMBER}-db
+   docker ps | grep {projectSlug}-pr-{PR_NUMBER}-db
    ```
 
 2. Check database logs:
 
    ```bash
-   docker logs pr-{PR_NUMBER}-db
+   docker logs {projectSlug}-pr-{PR_NUMBER}-db
    ```
 
 3. Test database connection:
 
    ```bash
-   docker exec pr-{PR_NUMBER}-db pg_isready -U preview
+   docker exec {projectSlug}-pr-{PR_NUMBER}-db pg_isready -U preview
    ```
 
 4. Verify connection string in app:
    ```bash
-   docker exec pr-{PR_NUMBER}-app env | grep DATABASE_URL
+   docker exec {projectSlug}-pr-{PR_NUMBER}-app env | grep DATABASE_URL
    ```
 
 ### Cleanup Not Working

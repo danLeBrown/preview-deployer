@@ -156,31 +156,30 @@ app.get('/api/previews', (_req: Request, res: Response) => {
   }
 });
 
-app.delete('/api/previews/:prNumber', async (req: Request, res: Response) => {
-  const prNumber = parseInt(req.params.prNumber, 10);
-
-  if (isNaN(prNumber)) {
-    res.status(400).json({ error: 'Invalid PR number' });
+app.delete('/api/previews/:deploymentId', async (req: Request, res: Response) => {
+  const deploymentId = req.params.deploymentId;
+  if (!deploymentId) {
+    res.status(400).json({ error: 'Invalid deployment id' });
     return;
   }
 
   try {
-    const deployment = tracker.getDeployment(prNumber);
+    const deployment = tracker.getDeployment(deploymentId);
     if (!deployment) {
       res.status(404).json({ error: 'Deployment not found' });
       return;
     }
 
-    await dockerManager.cleanupPreview(prNumber);
-    await nginxManager.removePreview(prNumber);
-    await tracker.deleteDeployment(prNumber);
+    await dockerManager.cleanupPreview(deploymentId);
+    await nginxManager.removePreview(deployment.projectSlug, deployment.prNumber);
+    await tracker.deleteDeployment(deploymentId);
 
-    res.json({ status: 'ok', message: `Preview #${prNumber} cleaned up` });
+    res.json({ status: 'ok', message: `Preview ${deploymentId} cleaned up` });
   } catch (error: unknown) {
     if (error instanceof Error) {
-      logger.error({ prNumber, error: error.message }, 'Failed to cleanup preview');
+      logger.error({ deploymentId, error: error.message }, 'Failed to cleanup preview');
     } else {
-      logger.error({ prNumber, error: 'Unknown error' }, 'Failed to cleanup preview');
+      logger.error({ deploymentId, error: 'Unknown error' }, 'Failed to cleanup preview');
     }
     res.status(500).json({ error: error instanceof Error ? error.message : 'Unknown error' });
   }

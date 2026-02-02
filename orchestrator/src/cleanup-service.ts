@@ -69,7 +69,7 @@ export class CleanupService {
 
     for (const deployment of deployments) {
       try {
-        const age = this.tracker.getDeploymentAge(deployment.prNumber);
+        const age = this.tracker.getDeploymentAge(deployment.deploymentId);
         const isStale = age > ttlDays;
 
         // Check if PR is closed/merged
@@ -84,7 +84,7 @@ export class CleanupService {
         } catch (error: unknown) {
           this.logger.warn(
             {
-              prNumber: deployment.prNumber,
+              deploymentId: deployment.deploymentId,
               error: error instanceof Error ? error.message : 'Unknown error',
             },
             'Failed to check PR status, assuming open',
@@ -93,7 +93,12 @@ export class CleanupService {
 
         if (isStale || isPRClosed) {
           this.logger.info(
-            { prNumber: deployment.prNumber, age: age.toFixed(2), isStale, isPRClosed },
+            {
+              deploymentId: deployment.deploymentId,
+              age: age.toFixed(2),
+              isStale,
+              isPRClosed,
+            },
             'Cleaning up deployment',
           );
 
@@ -102,7 +107,7 @@ export class CleanupService {
       } catch (error: unknown) {
         this.logger.error(
           {
-            prNumber: deployment.prNumber,
+            deploymentId: deployment.deploymentId,
             error: error instanceof Error ? error.message : 'Unknown error',
           },
           'Failed to cleanup deployment',
@@ -114,22 +119,22 @@ export class CleanupService {
   }
 
   private async cleanupDeployment(deployment: IDeploymentInfo): Promise<void> {
-    const { prNumber } = deployment;
+    const { deploymentId, projectSlug, prNumber } = deployment;
 
     try {
-      // Cleanup Docker containers
-      await this.dockerManager.cleanupPreview(prNumber);
+      // Cleanup Docker containers (stops compose, removes work dir, releases ports)
+      await this.dockerManager.cleanupPreview(deploymentId);
 
       // Remove nginx config
-      await this.nginxManager.removePreview(prNumber);
+      await this.nginxManager.removePreview(projectSlug, prNumber);
 
-      // Delete deployment record
-      await this.tracker.deleteDeployment(prNumber);
+      // Delete deployment record (ports already released by cleanupPreview)
+      await this.tracker.deleteDeployment(deploymentId);
 
-      this.logger.info({ prNumber }, 'Deployment cleaned up successfully');
+      this.logger.info({ deploymentId }, 'Deployment cleaned up successfully');
     } catch (error: unknown) {
       this.logger.error(
-        { prNumber, error: error instanceof Error ? error.message : 'Unknown error' },
+        { deploymentId, error: error instanceof Error ? error.message : 'Unknown error' },
         'Failed to cleanup deployment',
       );
       throw error;

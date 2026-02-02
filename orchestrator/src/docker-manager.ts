@@ -41,11 +41,15 @@ export class DockerManager {
     this.logger = logger;
   }
 
-  async deployPreview(
-    config: IPreviewConfig,
-  ): Promise<{ url: string; appPort: number; framework: TFramework; dbType: TDatabaseType }> {
-    const workDir = path.join(this.deploymentsDir, `pr-${config.prNumber}`);
-    const { appPort, dbPort } = this.tracker.allocatePorts(config.prNumber);
+  async deployPreview(config: IPreviewConfig): Promise<{
+    url: string;
+    appPort: number;
+    dbPort: number;
+    framework: TFramework;
+    dbType: TDatabaseType;
+  }> {
+    const workDir = path.join(this.deploymentsDir, config.projectSlug, `pr-${config.prNumber}`);
+    const { appPort, dbPort } = this.tracker.allocatePorts(config.deploymentId);
 
     try {
       // Create working directory
@@ -95,6 +99,7 @@ export class DockerManager {
 
       // Generate docker-compose file (base + extra services + env/env_file from preview-config)
       const composeFile = await this.generateDockerCompose(
+        config.projectSlug,
         config.prNumber,
         appPort,
         dbPort,
@@ -104,8 +109,10 @@ export class DockerManager {
         repoConfig ?? undefined,
       );
 
-      this.logger.info({ prNumber: config.prNumber }, 'Building containers');
-      await execAsync(`docker compose -f ${composeFile} up -d --build`, { cwd: workDir });
+      this.logger.info({ deploymentId: config.deploymentId }, 'Building containers');
+      await execAsync(`docker compose -p ${config.deploymentId} -f ${composeFile} up -d --build`, {
+        cwd: workDir,
+      });
 
       // Wait for health check
       const isHealthy = await this.waitForHealthy(appPort, healthCheckPath, 60);
@@ -113,23 +120,23 @@ export class DockerManager {
         throw new Error(`Health check failed for PR #${config.prNumber}`);
       }
 
-      const url = `${process.env.PREVIEW_BASE_URL || 'http://localhost'}/pr-${config.prNumber}/`;
-      this.logger.info({ prNumber: config.prNumber, url }, 'Preview deployed successfully');
+      const url = `${process.env.PREVIEW_BASE_URL || 'http://localhost'}/${config.projectSlug}/pr-${config.prNumber}/`;
+      this.logger.info({ deploymentId: config.deploymentId, url }, 'Preview deployed successfully');
 
-      return { url, appPort, framework, dbType };
+      return { url, appPort, dbPort, framework, dbType };
     } catch (error: unknown) {
       this.logger.error(
         {
-          prNumber: config.prNumber,
+          deploymentId: config.deploymentId,
           error: error instanceof Error ? error.message : 'Unknown error',
         },
         'Failed to deploy preview',
       );
       // Cleanup on failure
-      await this.cleanupPreview(config.prNumber).catch((cleanupError) => {
+      await this.cleanupPreview(config.deploymentId).catch((cleanupError) => {
         this.logger.error(
           {
-            prNumber: config.prNumber,
+            deploymentId: config.deploymentId,
             error: cleanupError instanceof Error ? cleanupError.message : 'Unknown error',
           },
           'Failed to cleanup after deployment failure',
@@ -139,13 +146,16 @@ export class DockerManager {
     }
   }
 
-  async updatePreview(prNumber: number, commitSha: string): Promise<void> {
-    const workDir = path.join(this.deploymentsDir, `pr-${prNumber}`);
-    const deployment = this.tracker.getDeployment(prNumber);
-
+  async updatePreview(deploymentId: string, commitSha: string): Promise<void> {
+    const deployment = this.tracker.getDeployment(deploymentId);
     if (!deployment) {
-      throw new Error(`Deployment not found for PR #${prNumber}`);
+      throw new Error(`Deployment not found: ${deploymentId}`);
     }
+    const workDir = path.join(
+      this.deploymentsDir,
+      deployment.projectSlug,
+      `pr-${deployment.prNumber}`,
+    );
 
     try {
       // Pull latest changes
@@ -154,58 +164,80 @@ export class DockerManager {
 
       // Rebuild and restart containers
       const composeFile = path.join(workDir, 'docker-compose.preview.yml');
-      await execAsync(`docker compose -f ${composeFile} up -d --build`, { cwd: workDir });
+      await execAsync(`docker compose -p ${deploymentId} -f ${composeFile} up -d --build`, {
+        cwd: workDir,
+      });
 
       // Wait for health check (use repo preview-config path if present)
       const repoConfig = await readRepoPreviewConfig(workDir);
       const healthCheckPath = repoConfig?.health_check_path ?? '/health';
       const isHealthy = await this.waitForHealthy(deployment.appPort, healthCheckPath, 60);
       if (!isHealthy) {
-        throw new Error(`Health check failed after update for PR #${prNumber}`);
+        throw new Error(`Health check failed after update: ${deploymentId}`);
       }
 
-      this.logger.info({ prNumber }, 'Preview updated successfully');
+      this.logger.info({ deploymentId }, 'Preview updated successfully');
     } catch (error: unknown) {
       this.logger.error(
-        { prNumber, error: error instanceof Error ? error.message : 'Unknown error' },
+        { deploymentId, error: error instanceof Error ? error.message : 'Unknown error' },
         'Failed to update preview',
       );
       throw error;
     }
   }
 
-  async cleanupPreview(prNumber: number): Promise<void> {
-    const workDir = path.join(this.deploymentsDir, `pr-${prNumber}`);
+  async cleanupPreview(deploymentId: string): Promise<void> {
+    const deployment = this.tracker.getDeployment(deploymentId);
+    if (!deployment) {
+      this.logger.warn({ deploymentId }, 'Deployment not found for cleanup');
+      await this.tracker.releasePorts(deploymentId).catch((error) => {
+        this.logger.error(
+          { deploymentId, error: error instanceof Error ? error.message : 'Unknown error' },
+          'Failed to release ports',
+        );
+      });
+      return;
+    }
+    const workDir = path.join(
+      this.deploymentsDir,
+      deployment.projectSlug,
+      `pr-${deployment.prNumber}`,
+    );
     const composeFile = path.join(workDir, 'docker-compose.preview.yml');
 
     try {
       // Stop and remove containers
       try {
-        await execAsync(`docker compose -f ${composeFile} down -v`, { cwd: workDir });
+        await execAsync(`docker compose -p ${deploymentId} -f ${composeFile} down -v`, {
+          cwd: workDir,
+        });
       } catch (error: unknown) {
         // Ignore if compose file doesn't exist
-        this.logger.warn({ prNumber }, 'Docker compose file not found during cleanup');
+        this.logger.warn({ deploymentId }, 'Docker compose file not found during cleanup');
       }
 
       // Remove working directory
       await fs.rm(workDir, { recursive: true, force: true });
 
       // Release ports
-      await this.tracker.releasePorts(prNumber);
+      await this.tracker.releasePorts(deploymentId);
 
-      this.logger.info({ prNumber }, 'Preview cleaned up successfully');
+      this.logger.info({ deploymentId }, 'Preview cleaned up successfully');
     } catch (error: unknown) {
       this.logger.error(
-        { prNumber, error: error instanceof Error ? error.message : 'Unknown error' },
+        { deploymentId, error: error instanceof Error ? error.message : 'Unknown error' },
         'Failed to cleanup preview',
       );
       throw error;
     }
   }
 
-  async getPreviewStatus(prNumber: number): Promise<'running' | 'stopped' | 'failed'> {
+  async getPreviewStatus(deploymentId: string): Promise<'running' | 'stopped' | 'failed'> {
+    const deployment = this.tracker.getDeployment(deploymentId);
+    const containerName = deployment
+      ? `${deployment.projectSlug}-pr-${deployment.prNumber}-app`
+      : `${deploymentId}-app`;
     try {
-      const containerName = `pr-${prNumber}-app`;
       const container = this.docker.getContainer(containerName);
       const info = (await container.inspect()) as unknown as ContainerInspectInfo;
 
@@ -220,7 +252,7 @@ export class DockerManager {
       return 'failed';
     } catch (error: unknown) {
       this.logger.warn(
-        { prNumber, error: error instanceof Error ? error.message : 'Unknown error' },
+        { deploymentId, error: error instanceof Error ? error.message : 'Unknown error' },
         'Failed to get container status',
       );
       return 'stopped';
@@ -261,6 +293,7 @@ export class DockerManager {
   }
 
   private async generateDockerCompose(
+    projectSlug: string,
     prNumber: number,
     appPort: number,
     dbPort: number,
@@ -280,6 +313,7 @@ export class DockerManager {
     const template = Handlebars.compile(templateContent);
 
     const composeContent = template({
+      projectSlug,
       prNumber,
       appPort,
       dbPort,
@@ -293,7 +327,10 @@ export class DockerManager {
     for (const name of extraServices) {
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       if (name === 'redis') {
-        (services as Record<string, unknown>).redis = await this.loadRedisServiceBlock(prNumber);
+        (services as Record<string, unknown>).redis = await this.loadRedisServiceBlock(
+          projectSlug,
+          prNumber,
+        );
         // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         const env = (app.environment as string[]) ?? [];
         if (!env.some((e) => e.startsWith('REDIS_URL='))) {
@@ -346,11 +383,14 @@ export class DockerManager {
   }
 
   /** Load Redis extra-service block from template (BullMQ etc.); app connects via network. */
-  private async loadRedisServiceBlock(prNumber: number): Promise<Record<string, unknown>> {
+  private async loadRedisServiceBlock(
+    projectSlug: string,
+    prNumber: number,
+  ): Promise<Record<string, unknown>> {
     const templatePath = path.join(this.templatesDir, 'extra-service.redis.yml');
     const templateContent = await fs.readFile(templatePath, 'utf-8');
     const template = Handlebars.compile(templateContent);
-    const rendered = template({ prNumber });
+    const rendered = template({ projectSlug, prNumber });
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     return (yaml.load(rendered) as Record<string, unknown>) ?? {};
   }

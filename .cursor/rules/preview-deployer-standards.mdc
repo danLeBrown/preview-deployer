@@ -21,7 +21,9 @@ Before implementing new features or changes, read and follow these artifacts.
 - **Monorepo**: pnpm workspaces; packages `orchestrator` and `cli`. Root scripts: `pnpm build`, `pnpm install`.
 - **Stack**: Terraform (DO), Ansible (server config), TypeScript (orchestrator + CLI), Docker, nginx.
 - **Flow**: GitHub webhook → Orchestrator → Docker per PR → nginx routing → preview URLs; cleanup by TTL or PR close.
-- **Ports**: App `8000 + prNumber`, DB `9000 + prNumber`. Path-based routing `/pr-{number}/`.
+- **Project slug**: From repo owner/name (e.g. `myorg-myapp`). Deployment id: `{projectSlug}-{prNumber}`.
+- **Ports**: Global pool; next free app port from 8000, db from 9000 (keyed by deployment id).
+- **Path-based routing**: `/{projectSlug}/pr-{number}/`.
 - **Validation**: After code changes, run `pnpm build` and `node cli/dist/index.js --help` (or equivalent) before considering work done.
 
 ## When adding or changing code

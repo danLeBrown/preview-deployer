@@ -20,7 +20,8 @@ You are working on the preview-deployer project. Before implementing any new fea
 
 3. Conventions to respect:
    - pnpm monorepo (orchestrator + cli); TypeScript strict mode
-   - Port allocation: app 8000+prNumber, db 9000+prNumber; path-based routing /pr-{number}/
+   - Project slug from repo owner/name; deployment id {projectSlug}-{prNumber}; path-based routing /{projectSlug}/pr-{number}/
+   - Port allocation: global pool (next free app port from 8000, db from 9000)
    - Nginx: preview configs are included inside a default server block, not at http level
    - After code changes: run `pnpm build` and confirm CLI/orchestrator still work
 

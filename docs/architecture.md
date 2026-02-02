@@ -26,12 +26,14 @@ graph TB
 **Purpose**: Infrastructure as Code for Digital Ocean provisioning
 
 **Responsibilities**:
+
 - Create Digital Ocean droplet
 - Configure firewall rules
 - Allocate reserved IP
 - Set up SSH access
 
 **Key Files**:
+
 - `terraform/main.tf`: Resource definitions
 - `terraform/variables.tf`: Input variables
 - `terraform/outputs.tf`: Output values
@@ -41,6 +43,7 @@ graph TB
 **Purpose**: Server configuration and service deployment
 
 **Responsibilities**:
+
 - Install Docker and Docker Compose
 - Install and configure nginx
 - Deploy orchestrator service
@@ -48,6 +51,7 @@ graph TB
 - Configure log rotation
 
 **Roles**:
+
 - **docker**: Docker installation and configuration
 - **nginx**: Nginx installation and preview config structure
 - **orchestrator**: Orchestrator service deployment
@@ -57,6 +61,7 @@ graph TB
 **Purpose**: Core service handling webhooks and managing deployments
 
 **Responsibilities**:
+
 - Receive and verify GitHub webhooks
 - Clone repositories
 - Detect framework (NestJS/Go)
@@ -67,6 +72,7 @@ graph TB
 - Cleanup stale deployments
 
 **Key Modules**:
+
 - **webhook-handler.ts**: Webhook processing and routing
 - **docker-manager.ts**: Docker operations
 - **nginx-manager.ts**: Nginx configuration management
@@ -79,6 +85,7 @@ graph TB
 **Purpose**: User-facing interface for setup and management
 
 **Responsibilities**:
+
 - Initialize configuration
 - Run Terraform and Ansible
 - Create GitHub webhooks
@@ -86,6 +93,7 @@ graph TB
 - Destroy infrastructure
 
 **Commands**:
+
 - `init`: Create configuration file
 - `setup`: Deploy infrastructure
 - `status`: Check system status
@@ -134,17 +142,16 @@ graph TB
 
 ## Port Allocation Strategy
 
-- **App Ports**: `8000 + PR_NUMBER` (e.g., PR #123 → port 8123)
-- **DB Ports**: `9000 + PR_NUMBER` (e.g., PR #123 → port 9123)
-
-This allows up to ~56,000 PRs per repository (within port range 1024-65535).
+- **Global pool**: App ports start at 8000, DB ports at 9000. Each new deployment gets the next free app port and next free db port (keyed by deployment id).
+- Allows many deployments across multiple repos without collision.
 
 ## Routing Strategy
 
-**Path-based routing**: `/pr-{PR_NUMBER}/`
+**Path-based routing**: `/{PROJECT_SLUG}/pr-{PR_NUMBER}/`
 
-- Example: `http://SERVER_IP/pr-123/`
-- nginx proxies to `http://localhost:8123/`
+- **Project slug**: From repo owner/name (e.g. `myorg-myapp`). Avoids collisions when multiple repos have the same PR number.
+- Example: `http://SERVER_IP/myorg-myapp/pr-12/`
+- nginx proxies to `http://localhost:{APP_PORT}/`
 - Path prefix is stripped in proxy configuration
 
 **Future**: Subdomain support (`pr-123.server.com`) requires DNS configuration.
@@ -173,32 +180,34 @@ This allows up to ~56,000 PRs per repository (within port range 1024-65535).
 
 ## Deployment Tracking
 
-Deployments are tracked in a JSON file (`/opt/preview-deployer/deployments.json`):
+Deployments are tracked in a JSON file (`/opt/preview-deployer/deployments.json`). Keys are **deployment ids** (`{projectSlug}-{prNumber}`):
 
 ```json
 {
   "deployments": {
-    "123": {
-      "prNumber": 123,
+    "my-org-my-app-12": {
+      "prNumber": 12,
       "repoName": "my-app",
       "repoOwner": "my-org",
+      "projectSlug": "my-org-my-app",
+      "deploymentId": "my-org-my-app-12",
       "branch": "feature-branch",
       "commitSha": "abc123...",
       "framework": "nestjs",
       "dbType": "postgres",
-      "appPort": 8123,
-      "dbPort": 9123,
+      "appPort": 8000,
+      "dbPort": 9000,
       "status": "running",
       "createdAt": "2026-01-29T10:00:00Z",
       "updatedAt": "2026-01-29T10:00:00Z",
-      "url": "http://SERVER_IP/pr-123/",
+      "url": "http://SERVER_IP/my-org-my-app/pr-12/",
       "commentId": 456789
     }
   },
   "portAllocations": {
-    "123": {
-      "appPort": 8123,
-      "dbPort": 9123
+    "my-org-my-app-12": {
+      "appPort": 8000,
+      "dbPort": 9000
     }
   }
 }

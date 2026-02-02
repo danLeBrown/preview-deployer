@@ -25,6 +25,10 @@ export interface IPreviewConfig {
   prNumber: number;
   repoName: string;
   repoOwner: string;
+  /** Filesystem/URL-safe slug from owner/name (e.g. myorg-myapp). Used for paths and nginx. */
+  projectSlug: string;
+  /** Unique id: projectSlug-prNumber (e.g. myorg-myapp-12). */
+  deploymentId: string;
   branch: string;
   commitSha: string;
   cloneUrl: string;
@@ -36,6 +40,8 @@ export interface IDeploymentInfo {
   prNumber: number;
   repoName: string;
   repoOwner: string;
+  projectSlug: string;
+  deploymentId: string;
   branch: string;
   commitSha: string;
   framework: TFramework;
@@ -78,7 +84,6 @@ export interface IWebhookPayload {
 }
 
 export interface IPortAllocation {
-  prNumber: number;
   appPort: number;
   dbPort: number;
 }

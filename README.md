@@ -8,7 +8,7 @@ Automated preview deployment system for backend applications (NestJS and Go) tha
 - 🗄️ **Database Isolation**: Each preview gets its own database instance
 - 🔄 **Auto Updates**: Preview environments rebuild automatically on PR updates
 - 🧹 **Auto Cleanup**: Removes preview environments when PRs are closed or after TTL expires
-- 🌐 **Nginx Routing**: Path-based routing (`/pr-{number}/`) to preview environments
+- 🌐 **Nginx Routing**: Path-based routing (`/{projectSlug}/pr-{number}/`) to preview environments (project slug from repo owner/name avoids collisions across repos)
 - 📦 **Infrastructure as Code**: Terraform for provisioning, Ansible for configuration
 - 🛠️ **CLI Tool**: Simple command-line interface for setup and management
 - 🔒 **Secure**: Webhook signature verification, repository whitelisting, input sanitization
@@ -20,6 +20,7 @@ GitHub Webhook → Orchestrator API → Docker Containers → Nginx Reverse Prox
 ```
 
 **Key Components:**
+
 - **Terraform**: Provisions Digital Ocean droplet with networking and security
 - **Ansible**: Configures server with Docker, nginx, and orchestrator service
 - **Orchestrator**: TypeScript service handling webhooks, Docker management, nginx config, and cleanup

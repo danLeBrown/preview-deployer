@@ -11,6 +11,7 @@ GitHub Webhook → Orchestrator API → Docker Containers → Nginx Reverse Prox
 ```
 
 **Key Components:**
+
 - **Terraform**: Provisions Digital Ocean droplet with networking and security
 - **Ansible**: Configures server with Docker, nginx, and orchestrator service
 - **Orchestrator**: TypeScript service handling webhooks, Docker management, nginx config, and cleanup
@@ -41,8 +42,10 @@ preview-deployer/
 
 ## Key Implementation Details
 
-- **Port allocation**: App `8000 + prNumber`, DB `9000 + prNumber`.
-- **Routing**: Path-based `/pr-{number}/`; nginx proxies to `http://localhost:{appPort}/`.
-- **Deployment tracking**: JSON file at `/opt/preview-deployer/deployments.json`; atomic file operations.
+- **Project slug**: Derived from repo `owner/name` (e.g. `myorg-myapp`). Used to avoid collisions when multiple repos have the same PR number.
+- **Deployment id**: `{projectSlug}-{prNumber}` (e.g. `myorg-myapp-12`). Single key for tracker, nginx config filenames, and compose project name.
+- **Port allocation**: Global pool; next free app port from 8000, next free db port from 9000. Keyed by deployment id.
+- **Routing**: Path-based `/{projectSlug}/pr-{number}/`; nginx proxies to `http://localhost:{appPort}/`.
+- **Deployment tracking**: JSON file at `/opt/preview-deployer/deployments.json`; keys are deployment ids; atomic file operations.
 
 For the full plan (phases, roles, validation checkpoints, testing), see the Cursor plan or the rest of this doc. This file is the single source of truth for architecture and implementation standards.

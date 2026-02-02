@@ -55,6 +55,7 @@ preview init
 ```
 
 You'll be prompted for:
+
 - Digital Ocean API token
 - Digital Ocean region (default: nyc3)
 - Droplet size (default: s-2vcpu-4gb)
@@ -70,7 +71,7 @@ Configuration is saved to `~/.preview-deployer/config.yml`. Sensitive values are
 Add a `preview-config.yml` file to your repository root:
 
 ```yaml
-framework: nestjs  # or 'go'
+framework: nestjs # or 'go'
 database: postgres
 health_check_path: /health
 ```
@@ -88,11 +89,13 @@ preview setup
 ```
 
 This will:
+
 1. Provision a Digital Ocean droplet
 2. Configure the server with Docker, nginx, and the orchestrator
 3. Create GitHub webhooks for your repositories
 
 You'll be prompted for:
+
 - SSH public key (for droplet access)
 - Confirmation to create infrastructure
 
@@ -106,7 +109,7 @@ The setup process takes about 5-10 minutes.
 4. Wait 2-3 minutes for the preview to deploy
 5. Check the PR comments for the preview URL
 
-The preview URL will be in the format: `http://YOUR_SERVER_IP/pr-PR_NUMBER/`
+The preview URL will be in the format: `http://YOUR_SERVER_IP/{projectSlug}/pr-{PR_NUMBER}/` (e.g. `http://YOUR_SERVER_IP/myorg-myapp/pr-12/`).
 
 ## Step 7: Verify Deployment
 
@@ -117,6 +120,7 @@ preview status
 ```
 
 This shows:
+
 - Infrastructure status
 - Orchestrator health
 - Active preview deployments
@@ -126,23 +130,25 @@ This shows:
 If something goes wrong:
 
 1. Check the orchestrator logs:
+
    ```bash
    ssh root@YOUR_SERVER_IP
    journalctl -u preview-deployer-orchestrator -f
    ```
 
 2. Check Docker containers:
+
    ```bash
    ssh root@YOUR_SERVER_IP
    docker ps -a
-   docker logs pr-123-app  # Replace 123 with PR number
+   docker logs {projectSlug}-pr-123-app  # Replace with your project slug and PR number
    ```
 
 3. Check nginx configuration:
    ```bash
    ssh root@YOUR_SERVER_IP
    nginx -t
-   cat /etc/nginx/preview-configs/pr-123.conf
+   cat /etc/nginx/preview-configs/{projectSlug}-pr-123.conf
    ```
 
 See [Troubleshooting Guide](troubleshooting.md) for more help.
@@ -157,6 +163,7 @@ See [Troubleshooting Guide](troubleshooting.md) for more help.
 ## Cost Estimation
 
 Default setup costs approximately:
+
 - Digital Ocean droplet (s-2vcpu-4gb): ~$24/month
 - Reserved IP: Free
 - Firewall: Free
@@ -165,6 +172,7 @@ Default setup costs approximately:
 **Total: ~$24/month**
 
 You can reduce costs by:
+
 - Using a smaller droplet (s-1vcpu-2gb: ~$12/month)
 - Using a cheaper region
 - Disabling backups
@@ -178,6 +186,7 @@ preview destroy
 ```
 
 This will:
+
 1. Cleanup all preview deployments
 2. Delete GitHub webhooks
 3. Destroy the Digital Ocean droplet

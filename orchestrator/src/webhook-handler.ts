@@ -4,6 +4,7 @@ import { Logger } from 'pino';
 import { DockerManager } from './docker-manager';
 import { GitHubClient } from './github-client';
 import { NginxManager } from './nginx-manager';
+import { toDeploymentId, toProjectSlug } from './project-slug';
 import { IDeploymentTracker } from './types/deployment';
 import { IDeploymentInfo, IPreviewConfig, IWebhookPayload } from './types/preview-config';
 
@@ -124,11 +125,13 @@ export class WebhookHandler {
     const prNumber = pull_request.number;
     const repoOwner = repository.owner.login;
     const repoName = repository.name;
+    const projectSlug = toProjectSlug(repoOwner, repoName);
+    const deploymentId = toDeploymentId(projectSlug, prNumber);
 
     // Check if deployment already exists
-    const existingDeployment = this.tracker.getDeployment(prNumber);
+    const existingDeployment = this.tracker.getDeployment(deploymentId);
     if (existingDeployment) {
-      this.logger.info({ prNumber }, 'Deployment already exists, updating instead');
+      this.logger.info({ deploymentId }, 'Deployment already exists, updating instead');
       await this.handleUpdate(payload);
       return;
     }
@@ -156,6 +159,8 @@ export class WebhookHandler {
       prNumber,
       repoName,
       repoOwner,
+      projectSlug,
+      deploymentId,
       branch: pull_request.head.ref,
       commitSha: pull_request.head.sha,
       cloneUrl: pull_request.head.repo.clone_url,
@@ -164,10 +169,11 @@ export class WebhookHandler {
     };
 
     // Deploy preview (framework and dbType resolved from repo preview-config.yml or detection)
-    const { url, appPort, framework, dbType } = await this.dockerManager.deployPreview(config);
+    const { url, appPort, dbPort, framework, dbType } =
+      await this.dockerManager.deployPreview(config);
 
     // Add nginx config
-    await this.nginxManager.addPreview(prNumber, appPort);
+    await this.nginxManager.addPreview(projectSlug, prNumber, appPort);
 
     // Save deployment info with resolved framework and dbType
     const deployment: IDeploymentInfo = {
@@ -175,7 +181,7 @@ export class WebhookHandler {
       framework,
       dbType,
       appPort,
-      dbPort: 9000 + prNumber,
+      dbPort,
       status: 'running',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -198,7 +204,7 @@ export class WebhookHandler {
       }
     }
 
-    this.logger.info({ prNumber, url }, 'Preview deployed successfully');
+    this.logger.info({ deploymentId, url }, 'Preview deployed successfully');
   }
 
   private async handleUpdate(payload: IWebhookPayload): Promise<void> {
@@ -206,10 +212,11 @@ export class WebhookHandler {
     const prNumber = pull_request.number;
     const repoOwner = repository.owner.login;
     const repoName = repository.name;
+    const deploymentId = toDeploymentId(toProjectSlug(repoOwner, repoName), prNumber);
 
-    const deployment = this.tracker.getDeployment(prNumber);
+    const deployment = this.tracker.getDeployment(deploymentId);
     if (!deployment) {
-      this.logger.warn({ prNumber }, 'Deployment not found for update, deploying new');
+      this.logger.warn({ deploymentId }, 'Deployment not found for update, deploying new');
       await this.handleDeploy(payload);
       return;
     }
@@ -229,7 +236,7 @@ export class WebhookHandler {
     }
 
     // Update preview
-    await this.dockerManager.updatePreview(prNumber, pull_request.head.sha);
+    await this.dockerManager.updatePreview(deploymentId, pull_request.head.sha);
 
     // Update deployment info
     deployment.commitSha = pull_request.head.sha;
@@ -250,28 +257,32 @@ export class WebhookHandler {
       }
     }
 
-    this.logger.info({ prNumber }, 'Preview updated successfully');
+    this.logger.info({ deploymentId }, 'Preview updated successfully');
   }
 
   private async handleCleanup(payload: IWebhookPayload): Promise<void> {
-    const { pull_request } = payload;
+    const { pull_request, repository } = payload;
     const prNumber = pull_request.number;
+    const deploymentId = toDeploymentId(
+      toProjectSlug(repository.owner.login, repository.name),
+      prNumber,
+    );
 
-    const deployment = this.tracker.getDeployment(prNumber);
+    const deployment = this.tracker.getDeployment(deploymentId);
     if (!deployment) {
-      this.logger.warn({ prNumber }, 'Deployment not found for cleanup');
+      this.logger.warn({ deploymentId }, 'Deployment not found for cleanup');
       return;
     }
 
-    // Cleanup Docker containers
-    await this.dockerManager.cleanupPreview(prNumber);
+    // Cleanup Docker containers (stops compose, removes work dir, releases ports)
+    await this.dockerManager.cleanupPreview(deploymentId);
 
     // Remove nginx config
-    await this.nginxManager.removePreview(prNumber);
+    await this.nginxManager.removePreview(deployment.projectSlug, prNumber);
 
     // Delete deployment record
-    await this.tracker.deleteDeployment(prNumber);
+    await this.tracker.deleteDeployment(deploymentId);
 
-    this.logger.info({ prNumber }, 'Preview cleaned up successfully');
+    this.logger.info({ deploymentId }, 'Preview cleaned up successfully');
   }
 }
