@@ -116,6 +116,8 @@
     chdir: '{{ orchestrator_dir }}'
     executable: /bin/bash
   become_user: '{{ deployment_user }}'
+  notify:
+    - restart orchestrator
 
 # Skip when local: we already built on controller and synced dist/
 - name: Build orchestrator TypeScript (git source only)
@@ -125,6 +127,8 @@
     executable: /bin/bash
   become_user: '{{ deployment_user }}'
   when: orchestrator_source == "git"
+  notify:
+    - restart orchestrator
 
 - name: Create orchestrator environment file
   template:

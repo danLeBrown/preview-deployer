@@ -31,6 +31,8 @@ ${serverIp} ansible_user=root${keyArg}
       .map(([key, value]) => `-e "${key}=${value}"`)
       .join(' ');
 
+    // console.log(`ansible-playbook -i ${inventoryPath} playbook.yml ${varArgs}`);
+
     try {
       const { stdout, stderr } = await execAsync(
         `ansible-playbook -i ${inventoryPath} playbook.yml ${varArgs}`,
