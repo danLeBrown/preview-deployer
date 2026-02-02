@@ -1,12 +1,22 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
 
-import { IRepoPreviewConfig, TFramework } from './types/preview-config';
+import { IRepoPreviewConfig, TFramework } from '../types/preview-config';
 
 /** Check if a file exists at dir/file (no throw). */
 export async function fileExists(dir: string, file: string): Promise<boolean> {
   try {
     await fs.access(path.join(dir, file));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Check if a directory exists at dir (no throw). */
+export async function directoryExists(dir: string): Promise<boolean> {
+  try {
+    await fs.access(dir);
     return true;
   } catch {
     return false;

@@ -1,13 +1,10 @@
 import { exec } from 'child_process';
 import Docker, { ContainerInspectInfo } from 'dockerode';
 import * as fs from 'fs/promises';
-import * as Handlebars from 'handlebars';
-import * as yaml from 'js-yaml';
 import * as path from 'path';
 import { Logger } from 'pino';
 import { promisify } from 'util';
 
-import { fileExists, resolveFramework } from './framework-detection';
 import { readRepoPreviewConfig } from './repo-config';
 import { IDeploymentTracker } from './types/deployment';
 import {
@@ -17,6 +14,17 @@ import {
   TExtraService,
   TFramework,
 } from './types/preview-config';
+import {
+  applyRepoConfigToAppService,
+  dumpCompose,
+  ensurePreviewComposeExtension,
+  getComposeFilePath,
+  hasRepoPreviewCompose,
+  mergeExtraServices,
+  parseComposeToObject,
+  renderComposeTemplate,
+} from './utils/compose-utils';
+import { directoryExists, fileExists, resolveFramework } from './utils/framework-detection';
 
 const execAsync = promisify(exec);
 
@@ -52,6 +60,11 @@ export class DockerManager {
     const { appPort, dbPort } = this.tracker.allocatePorts(config.deploymentId);
 
     try {
+      // verify that the workDir does not exist
+      if (await directoryExists(workDir)) {
+        await fs.rm(workDir, { recursive: true, force: true });
+      }
+
       // Create working directory
       await fs.mkdir(workDir, { recursive: true });
 
@@ -97,25 +110,40 @@ export class DockerManager {
       // Ensure repo has a Dockerfile; inject framework default if missing
       await this.ensureDockerfile(workDir, framework);
 
-      // Generate docker-compose file (base + extra services + env/env_file from preview-config)
-      const composeFile = await this.generateDockerCompose(
-        config.projectSlug,
-        config.prNumber,
-        appPort,
-        dbPort,
-        framework,
-        repoConfig?.extra_services ?? [],
-        workDir,
-        repoConfig ?? undefined,
-      );
+      // Normalize .yaml → .yml if repo has only docker-compose.preview.yaml; then check for repo compose
+      await ensurePreviewComposeExtension(workDir);
+      const useRepoCompose = await hasRepoPreviewCompose(workDir);
+      const composeFile = useRepoCompose
+        ? getComposeFilePath(workDir)
+        : await this.generateDockerCompose(
+            config.projectSlug,
+            config.prNumber,
+            appPort,
+            dbPort,
+            framework,
+            repoConfig?.extra_services ?? [],
+            workDir,
+            repoConfig ?? undefined,
+          );
 
-      this.logger.info({ deploymentId: config.deploymentId }, 'Building containers');
+      this.logger.info(
+        { deploymentId: config.deploymentId, useRepoCompose },
+        'Building containers',
+      );
+      const composeEnv = useRepoCompose
+        ? {
+            ...process.env,
+            PREVIEW_APP_PORT: String(appPort),
+            PREVIEW_DB_PORT: String(dbPort),
+          }
+        : undefined;
       await execAsync(`docker compose -p ${config.deploymentId} -f ${composeFile} up -d --build`, {
         cwd: workDir,
+        env: composeEnv,
       });
 
       // Wait for health check
-      const isHealthy = await this.waitForHealthy(appPort, healthCheckPath, 60);
+      const isHealthy = await this.waitForHealthy(appPort, healthCheckPath, 5);
       if (!isHealthy) {
         throw new Error(`Health check failed for PR #${config.prNumber}`);
       }
@@ -162,16 +190,26 @@ export class DockerManager {
       await execAsync(`git fetch origin`, { cwd: workDir });
       await execAsync(`git reset --hard ${commitSha}`, { cwd: workDir });
 
-      // Rebuild and restart containers
-      const composeFile = path.join(workDir, 'docker-compose.preview.yml');
+      // Normalize .yaml → .yml if needed; then rebuild (same compose file as deploy)
+      await ensurePreviewComposeExtension(workDir);
+      const useRepoCompose = await hasRepoPreviewCompose(workDir);
+      const composeFile = getComposeFilePath(workDir);
+      const composeEnv = useRepoCompose
+        ? {
+            ...process.env,
+            PREVIEW_APP_PORT: String(deployment.appPort),
+            PREVIEW_DB_PORT: String(deployment.dbPort),
+          }
+        : undefined;
       await execAsync(`docker compose -p ${deploymentId} -f ${composeFile} up -d --build`, {
         cwd: workDir,
+        env: composeEnv,
       });
 
       // Wait for health check (use repo preview-config path if present)
       const repoConfig = await readRepoPreviewConfig(workDir);
       const healthCheckPath = repoConfig?.health_check_path ?? '/health';
-      const isHealthy = await this.waitForHealthy(deployment.appPort, healthCheckPath, 60);
+      const isHealthy = await this.waitForHealthy(deployment.appPort, healthCheckPath, 5);
       if (!isHealthy) {
         throw new Error(`Health check failed after update: ${deploymentId}`);
       }
@@ -203,7 +241,7 @@ export class DockerManager {
       deployment.projectSlug,
       `pr-${deployment.prNumber}`,
     );
-    const composeFile = path.join(workDir, 'docker-compose.preview.yml');
+    const composeFile = getComposeFilePath(workDir);
 
     try {
       // Stop and remove containers
@@ -263,7 +301,6 @@ export class DockerManager {
     // check if Dockerfile/dockerfile exists in the PR directory
     if (await fileExists(workDir, 'Dockerfile')) {
       this.logger.info({ workDir }, 'Dockerfile exists in the PR directory');
-      console.log(await fs.readFile(path.join(workDir, 'Dockerfile'), 'utf-8'));
       return;
     }
 
@@ -307,79 +344,26 @@ export class DockerManager {
       go: 'docker-compose.go.yml.hbs',
       laravel: 'docker-compose.laravel.yml.hbs',
     };
-    const templateName = templateNames[framework];
-    const templatePath = path.join(this.templatesDir, templateName);
+    const templatePath = path.join(this.templatesDir, templateNames[framework]);
     const templateContent = await fs.readFile(templatePath, 'utf-8');
-    const template = Handlebars.compile(templateContent);
 
-    const composeContent = template({
+    const composeContent = renderComposeTemplate(templateContent, {
       projectSlug,
       prNumber,
       appPort,
       dbPort,
     });
+    const composeObj = parseComposeToObject(composeContent);
 
-    const composeObj = yaml.load(composeContent) as Record<string, unknown>;
-    const services = (composeObj.services ?? {}) as Record<string, unknown>;
-    const app = (services.app ?? {}) as Record<string, unknown>;
+    const redisBlock = extraServices.includes('redis')
+      ? await this.loadRedisServiceBlock(projectSlug, prNumber)
+      : {};
+    mergeExtraServices(composeObj, extraServices, redisBlock);
+    applyRepoConfigToAppService(composeObj, repoConfig, framework);
 
-    // Merge extra services (e.g. redis) into compose: add service block + app env + app depends_on
-    for (const name of extraServices) {
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-      if (name === 'redis') {
-        (services as Record<string, unknown>).redis = await this.loadRedisServiceBlock(
-          projectSlug,
-          prNumber,
-        );
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-        const env = (app.environment as string[]) ?? [];
-        if (!env.some((e) => e.startsWith('REDIS_URL='))) {
-          app.environment = [...env, 'REDIS_URL=redis://redis:6379'];
-        }
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-        const dependsOn = (app.depends_on as Record<string, unknown>) ?? {};
-        (dependsOn as Record<string, unknown>).redis = { condition: 'service_started' };
-        app.depends_on = dependsOn;
-      }
-    }
-
-    // Wire env and env_file from preview-config into app service (Heroku/Vercel-style runtime env)
-    if (repoConfig?.env?.length || repoConfig?.env_file) {
-      const currentEnv = app.environment;
-      const env = Array.isArray(currentEnv) ? (currentEnv as string[]) : [];
-      if (repoConfig.env?.length) {
-        app.environment = [...env, ...repoConfig.env];
-      }
-      if (repoConfig.env_file) {
-        app.env_file = Array.isArray(repoConfig.env_file)
-          ? repoConfig.env_file
-          : [repoConfig.env_file];
-      }
-    }
-
-    // Wire startup_commands: run inside container before main process (migrations, seeding, etc.)
-    if (repoConfig?.startup_commands?.length) {
-      const script = [...repoConfig.startup_commands, 'exec "$@"'].join(' && ');
-      app.entrypoint = ['/bin/sh', '-c', script, '--'];
-      app.command = this.getDefaultCommand(framework);
-    }
-
-    composeObj.services = services;
-    const finalContent = yaml.dump(composeObj, { lineWidth: -1 });
-    const composeFile = path.join(workDir, 'docker-compose.preview.yml');
-    await fs.writeFile(composeFile, finalContent, 'utf-8');
-
+    const composeFile = getComposeFilePath(workDir);
+    await fs.writeFile(composeFile, dumpCompose(composeObj), 'utf-8');
     return composeFile;
-  }
-
-  /** Default CMD per framework (must match Dockerfile template). Used when startup_commands override entrypoint. */
-  private getDefaultCommand(framework: TFramework): string[] {
-    const commands: Record<TFramework, string[]> = {
-      nestjs: ['node', 'dist/main'],
-      go: ['./server'],
-      laravel: ['php', 'artisan', 'serve', '--host=0.0.0.0', '--port=8000'],
-    };
-    return commands[framework];
   }
 
   /** Load Redis extra-service block from template (BullMQ etc.); app connects via network. */
@@ -389,10 +373,13 @@ export class DockerManager {
   ): Promise<Record<string, unknown>> {
     const templatePath = path.join(this.templatesDir, 'extra-service.redis.yml');
     const templateContent = await fs.readFile(templatePath, 'utf-8');
-    const template = Handlebars.compile(templateContent);
-    const rendered = template({ projectSlug, prNumber });
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-    return (yaml.load(rendered) as Record<string, unknown>) ?? {};
+    const rendered = renderComposeTemplate(templateContent, {
+      projectSlug,
+      prNumber,
+      appPort: 0,
+      dbPort: 0,
+    });
+    return parseComposeToObject(rendered) as Record<string, unknown>;
   }
 
   private async waitForHealthy(

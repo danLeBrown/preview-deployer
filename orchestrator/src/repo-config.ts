@@ -2,13 +2,13 @@ import * as fs from 'fs/promises';
 import * as yaml from 'js-yaml';
 import * as path from 'path';
 
-import { fileExists } from './framework-detection';
 import {
   IRepoPreviewConfig,
   TDatabaseType,
   TExtraService,
   TFramework,
 } from './types/preview-config';
+import { fileExists } from './utils/framework-detection';
 
 const PREVIEW_CONFIG_FILENAME = 'preview-config.yml';
 
