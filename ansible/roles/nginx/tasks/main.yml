@@ -9,9 +9,9 @@
     name: nginx
     state: present
 
-- name: Create nginx directory structure
+- name: Create nginx directory structure (root-owned)
   file:
-    path: "{{ item }}"
+    path: '{{ item }}'
     state: directory
     mode: '0755'
     owner: root
@@ -19,7 +19,14 @@
   loop:
     - /etc/nginx/sites-available
     - /etc/nginx/sites-enabled
-    - /etc/nginx/preview-configs
+
+- name: Create preview-configs directory (orchestrator-writable)
+  file:
+    path: /etc/nginx/preview-configs
+    state: directory
+    mode: '0755'
+    owner: '{{ deployment_user }}'
+    group: '{{ deployment_user }}'
 
 - name: Deploy main nginx configuration
   template:
@@ -48,4 +55,4 @@
 
 - name: Display nginx status
   debug:
-    msg: "Nginx installed and configured successfully"
+    msg: 'Nginx installed and configured successfully'

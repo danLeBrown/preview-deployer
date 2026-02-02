@@ -184,7 +184,7 @@ deploy:
 
 ## Nginx Configuration
 
-Preview configs are generated in `/etc/nginx/preview-configs/`:
+Preview configs are generated in `/etc/nginx/preview-configs/`. That directory is owned by the deployment user (e.g. `preview-deployer`) so the orchestrator can create and remove config files without root.
 
 ```nginx
 location /pr-{PR_NUMBER}/ {
