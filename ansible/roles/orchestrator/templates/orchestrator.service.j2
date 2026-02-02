@@ -15,8 +15,8 @@ RestartSec=10
 StandardOutput=append:{{ orchestrator_dir }}/logs/orchestrator.log
 StandardError=append:{{ orchestrator_dir }}/logs/orchestrator-error.log
 
-# Security settings
-NoNewPrivileges=true
+# Security settings (NoNewPrivileges=false so orchestrator can run sudo nginx -t / nginx -s reload via sudoers)
+NoNewPrivileges=false
 PrivateTmp=true
 ProtectSystem=strict
 # using true here will cause the service to fail to start, so we use read-only

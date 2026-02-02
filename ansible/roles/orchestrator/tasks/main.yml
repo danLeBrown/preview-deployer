@@ -1,23 +1,23 @@
 ---
 - name: Create orchestrator directory
   file:
-    path: "{{ orchestrator_dir }}"
+    path: '{{ orchestrator_dir }}'
     state: directory
     mode: '0755'
-    owner: "{{ deployment_user }}"
-    group: "{{ deployment_user }}"
+    owner: '{{ deployment_user }}'
+    group: '{{ deployment_user }}'
 
 - name: Create preview deployments directory
   file:
     path: /opt/preview-deployments
     state: directory
     mode: '0755'
-    owner: "{{ deployment_user }}"
-    group: "{{ deployment_user }}"
+    owner: '{{ deployment_user }}'
+    group: '{{ deployment_user }}'
 
 - name: Check if NVM is already installed
   stat:
-    path: "/home/{{ deployment_user }}/.nvm/nvm.sh"
+    path: '/home/{{ deployment_user }}/.nvm/nvm.sh'
   register: nvm_installed
 
 - name: Download and install nvm (only if not already installed)
@@ -27,7 +27,7 @@
     nvm install 24
     nvm use 24
     nvm alias default 24
-  become_user: "{{ deployment_user }}"
+  become_user: '{{ deployment_user }}'
   args:
     executable: /bin/bash
   when: not nvm_installed.stat.exists
@@ -36,17 +36,17 @@
   shell: . ~/.nvm/nvm.sh && node --version
   register: node_version
   changed_when: false
-  become_user: "{{ deployment_user }}"
+  become_user: '{{ deployment_user }}'
   args:
     executable: /bin/bash
 
 - name: Display Node.js version
   debug:
-    msg: "Node.js installed: {{ node_version.stdout }}"
+    msg: 'Node.js installed: {{ node_version.stdout }}'
 
 - name: Install pnpm
   shell: . ~/.nvm/nvm.sh && npm install -g pnpm
-  become_user: "{{ deployment_user }}"
+  become_user: '{{ deployment_user }}'
   args:
     executable: /bin/bash
 
@@ -54,20 +54,20 @@
   shell: . ~/.nvm/nvm.sh && pnpm --version
   register: pnpm_version
   changed_when: false
-  become_user: "{{ deployment_user }}"
+  become_user: '{{ deployment_user }}'
   args:
     executable: /bin/bash
 
 - name: Display pnpm version
   debug:
-    msg: "pnpm version: {{ pnpm_version.stdout }}"
+    msg: 'pnpm version: {{ pnpm_version.stdout }}'
 
 # Build once on controller when using local source; then sync includes dist/
 # so the server only installs prod deps and runs (no tsc on server).
 - name: Build orchestrator on controller (build once, deploy everywhere)
   shell: pnpm install && pnpm run build
   args:
-    chdir: "{{ playbook_dir }}/../orchestrator"
+    chdir: '{{ playbook_dir }}/../orchestrator'
   delegate_to: localhost
   become: false
   run_once: true
@@ -75,56 +75,63 @@
 
 - name: Synchronize files and exclude specific patterns
   ansible.builtin.synchronize:
-    src: "{{ playbook_dir }}/../orchestrator/"
-    dest: "{{ orchestrator_dir }}/"
+    src: '{{ playbook_dir }}/../orchestrator/'
+    dest: '{{ orchestrator_dir }}/'
     rsync_opts:
-      - "--exclude=.git"
-      - "--exclude=*.log"
-      - "--exclude=node_modules"
-      - "--exclude=src"
-      - "--exclude=tsconfig.json"
+      - '--exclude=.git'
+      - '--exclude=*.log'
+      - '--exclude=node_modules'
+      - '--exclude=src'
+      - '--exclude=tsconfig.json'
   when: orchestrator_source == "local"
 
 - name: Set ownership of orchestrator directory after sync
   file:
-    path: "{{ orchestrator_dir }}"
+    path: '{{ orchestrator_dir }}'
     state: directory
-    owner: "{{ deployment_user }}"
-    group: "{{ deployment_user }}"
+    owner: '{{ deployment_user }}'
+    group: '{{ deployment_user }}'
     recurse: yes
   when: orchestrator_source == "local"
 
+- name: Deploy sudoers rule for nginx reload (orchestrator needs nginx -t and nginx -s reload)
+  template:
+    src: nginx-reload.sudoers.j2
+    dest: /etc/sudoers.d/preview-deployer-nginx
+    mode: '0440'
+    validate: 'visudo -cf %s'
+
 - name: Clone orchestrator from repository
   git:
-    repo: "{{ orchestrator_repo_url }}"
-    dest: "{{ orchestrator_dir }}"
+    repo: '{{ orchestrator_repo_url }}'
+    dest: '{{ orchestrator_dir }}'
     version: "{{ orchestrator_repo_branch | default('main') }}"
     update: yes
   when: orchestrator_source == "git"
-  become_user: "{{ deployment_user }}"
+  become_user: '{{ deployment_user }}'
 
 - name: Install orchestrator dependencies
   shell: . ~/.nvm/nvm.sh && pnpm install --production
   args:
-    chdir: "{{ orchestrator_dir }}"
+    chdir: '{{ orchestrator_dir }}'
     executable: /bin/bash
-  become_user: "{{ deployment_user }}"
+  become_user: '{{ deployment_user }}'
 
 # Skip when local: we already built on controller and synced dist/
 - name: Build orchestrator TypeScript (git source only)
   shell: . ~/.nvm/nvm.sh && pnpm run build
   args:
-    chdir: "{{ orchestrator_dir }}"
+    chdir: '{{ orchestrator_dir }}'
     executable: /bin/bash
-  become_user: "{{ deployment_user }}"
+  become_user: '{{ deployment_user }}'
   when: orchestrator_source == "git"
 
 - name: Create orchestrator environment file
   template:
     src: orchestrator.env.j2
-    dest: "{{ orchestrator_dir }}/.env"
-    owner: "{{ deployment_user }}"
-    group: "{{ deployment_user }}"
+    dest: '{{ orchestrator_dir }}/.env'
+    owner: '{{ deployment_user }}'
+    group: '{{ deployment_user }}'
     mode: '0600'
 
 - name: Create systemd service file
@@ -137,11 +144,11 @@
 
 - name: Make logs directory
   file:
-    path: "{{ orchestrator_dir }}/logs"
+    path: '{{ orchestrator_dir }}/logs'
     state: directory
     mode: '0755'
-    owner: "{{ deployment_user }}"
-    group: "{{ deployment_user }}"
+    owner: '{{ deployment_user }}'
+    group: '{{ deployment_user }}'
 
 - name: Set up log rotation for orchestrator
   copy:
@@ -173,4 +180,4 @@
 
 - name: Display orchestrator status
   debug:
-    msg: "Orchestrator service is {{ orchestrator_status.status.ActiveState }}"
+    msg: 'Orchestrator service is {{ orchestrator_status.status.ActiveState }}'

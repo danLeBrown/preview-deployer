@@ -184,7 +184,7 @@ deploy:
 
 ## Nginx Configuration
 
-Preview configs are generated in `/etc/nginx/preview-configs/`. That directory is owned by the deployment user (e.g. `preview-deployer`) so the orchestrator can create and remove config files without root.
+Preview configs are generated in `/etc/nginx/preview-configs/`. That directory is owned by the deployment user (e.g. `preview-deployer`) so the orchestrator can create and remove config files without root. After writing a config, the orchestrator runs `nginx -t` and `nginx -s reload` via sudo; Ansible deploys a sudoers fragment at `/etc/sudoers.d/preview-deployer-nginx` so the deployment user can run only those two nginx commands without a password. The orchestrator systemd unit has `NoNewPrivileges=false` so that sudo can be used for this limited reload.
 
 ```nginx
 location /pr-{PR_NUMBER}/ {

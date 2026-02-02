@@ -1,0 +1,3 @@
+# Allow {{ deployment_user }} to test and reload nginx (used by preview-deployer orchestrator).
+# NoNewPrivileges is disabled in the orchestrator service so these sudo calls can run.
+{{ deployment_user }} ALL=(root) NOPASSWD: /usr/sbin/nginx -t, /usr/sbin/nginx -s reload
