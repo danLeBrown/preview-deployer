@@ -67,11 +67,20 @@ preview-deployer/
 - **PostgreSQL** (primary)
 - Architecture supports MySQL/MongoDB (future)
 
+## Testing
+
+```bash
+pnpm --filter @preview-deployer/orchestrator run test:unit
+```
+
+See [docs/testing.md](docs/testing.md) for test layers, coverage, and scripts.
+
 ## Documentation
 
 - [Quickstart Guide](docs/quickstart.md) - Get started in minutes
 - [Architecture](docs/architecture.md) - System design and components
 - [Configuration](docs/configuration.md) - Configuration reference
+- [Testing](docs/testing.md) - Running tests and coverage
 - [Troubleshooting](docs/troubleshooting.md) - Common issues and solutions
 
 ## Contributing

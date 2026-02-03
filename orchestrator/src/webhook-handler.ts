@@ -4,9 +4,9 @@ import { Logger } from 'pino';
 import { DockerManager } from './docker-manager';
 import { GitHubClient } from './github-client';
 import { NginxManager } from './nginx-manager';
-import { toDeploymentId, toProjectSlug } from './project-slug';
 import { IDeploymentTracker } from './types/deployment';
 import { IDeploymentInfo, IPreviewConfig, IWebhookPayload } from './types/preview-config';
+import { toDeploymentId, toProjectSlug } from './utils/project-slug-util';
 
 export class WebhookHandler {
   private webhookSecret: string;
