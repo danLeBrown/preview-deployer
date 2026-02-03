@@ -1,0 +1,43 @@
+---
+# Sync-only playbook: build orchestrator locally, rsync to server, restart.
+# Use this for code-only updates after initial setup (full playbook.yml).
+# Same inventory and vars as main playbook; no NVM/Node, no pnpm install, no .env/service.
+- name: Sync orchestrator code to server
+  hosts: preview_deployer
+  become: yes
+  vars:
+    deployment_user: preview-deployer
+    orchestrator_dir: /opt/preview-deployer
+
+  tasks:
+    - name: Build orchestrator on controller (build once, deploy everywhere)
+      ansible.builtin.shell: pnpm install && pnpm run build
+      args:
+        chdir: '{{ playbook_dir }}/../orchestrator'
+      delegate_to: localhost
+      become: false
+      run_once: true
+
+    - name: Synchronize orchestrator files to server
+      ansible.builtin.synchronize:
+        src: '{{ playbook_dir }}/../orchestrator/'
+        dest: '{{ orchestrator_dir }}/'
+        rsync_opts:
+          - '--exclude=.git'
+          - '--exclude=*.log'
+          - '--exclude=node_modules'
+          - '--exclude=src'
+          - '--exclude=tsconfig.json'
+
+    - name: Set ownership of orchestrator directory after sync
+      ansible.builtin.file:
+        path: '{{ orchestrator_dir }}'
+        state: directory
+        owner: '{{ deployment_user }}'
+        group: '{{ deployment_user }}'
+        recurse: yes
+
+    - name: Restart orchestrator service
+      ansible.builtin.systemd:
+        name: preview-deployer-orchestrator
+        state: restarted

@@ -12,7 +12,8 @@ This directory contains Ansible playbooks and roles for configuring the preview-
 
 ```
 ansible/
-├── playbook.yml          # Main playbook
+├── playbook.yml          # Main playbook (full server config)
+├── sync-orchestrator.yml # Sync-only playbook (code updates)
 ├── ansible.cfg           # Ansible configuration
 ├── inventory.ini         # Inventory file (populated from Terraform)
 └── roles/
@@ -34,6 +35,7 @@ Installs nginx, creates directory structure for preview configs, and deploys bas
 ### Orchestrator Role
 
 Deploys the orchestrator service:
+
 - Installs Node.js via NVM (for the deployment user)
 - When `orchestrator_source == "local"`: builds on the **controller** (your machine), then syncs source + built `dist/`; server only runs `npm install --omit=dev` (no TypeScript build on server — "build once, deploy everywhere")
 - When `orchestrator_source == "git"`: clones repo and builds on the server (requires dev deps there)
@@ -68,6 +70,18 @@ ansible-playbook -i inventory.ini playbook.yml \
   -e "allowed_repos=owner/repo1,owner/repo2" \
   -e "server_ip=$(cat server_ip.txt)"
 ```
+
+### Quick sync (code-only)
+
+After initial setup, use `sync-orchestrator.yml` to push only orchestrator code changes: build locally, rsync to server, restart the service. No NVM/Node install, no `pnpm install`, no .env or systemd changes.
+
+```bash
+ansible-playbook -i inventory.ini sync-orchestrator.yml
+```
+
+Uses the same inventory and defaults (`orchestrator_dir`, `deployment_user`). Override vars if needed, e.g. `-e "orchestrator_dir=/opt/custom"`.
+
+From the repo root you can also run **`preview sync`** (CLI): it uses Terraform output for the server IP and runs the sync playbook. Set `PREVIEW_SSH_KEY` to override the default SSH private key path (`~/.ssh/digital_ocean_ed25519`).
 
 ### Required Variables
 
