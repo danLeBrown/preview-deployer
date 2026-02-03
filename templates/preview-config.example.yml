@@ -9,7 +9,7 @@ app_port: 3000 # Port the app listens on
 
 # example: for NestJS, app_entrypoint is dist/main.js
 # example: for Go, app_entrypoint is ./server
-# example: for Rust, app_entrypoint is ./target/release/app or /.app
+# example: for Rust, app_entrypoint is ./target/release/app or ./app
 # example: for Python, app_entrypoint is app.main:app
 app_entrypoint: dist/main.js # Entrypoint for the app
 
