@@ -5,13 +5,13 @@ import * as path from 'path';
 import { Logger } from 'pino';
 import { promisify } from 'util';
 
-import { readRepoPreviewConfig } from './repo-config';
-import { IDeploymentTracker } from './types/deployment';
+import { IValidatedRepoPreviewConfig, readRepoPreviewConfig } from './repo-config';
+import { IDeploymentTracker, IPortAllocation } from './types/deployment';
 import {
   IPreviewConfig,
-  IRepoPreviewConfig,
   TDatabaseType,
   TExtraService,
+  TExtraServiceWithoutDatabase,
   TFramework,
 } from './types/preview-config';
 import {
@@ -22,18 +22,25 @@ import {
   getGeneratedComposeFilePath,
   hasRepoPreviewCompose,
   injectPortsIntoRepoCompose,
-  mergeExtraServices,
   parseComposeToObject,
   renderComposeTemplate,
 } from './utils/compose-utils';
 import { directoryExists, fileExists, resolveFramework } from './utils/framework-detection';
+import { loadExtraServiceBlock } from './utils/load-extra-service-compose-utils';
+import { mergeExtraService } from './utils/merge-extra-service-util';
 
 const execAsync = promisify(exec);
+
+export const DOCKER_COMPOSE_TEMPLATES_DIR = 'docker-compose';
+export const DOCKERFILE_TEMPLATES_DIR = 'dockerfile';
+export const EXTRA_SERVICE_TEMPLATES_DIR = 'extra-service';
 
 export class DockerManager {
   private docker: Docker;
   private deploymentsDir: string;
-  private templatesDir: string;
+  private dockerComposeTemplatesDir: string;
+  private dockerfileTemplatesDir: string;
+  private extraServiceTemplatesDir: string;
   private tracker: IDeploymentTracker;
   private logger: Logger;
 
@@ -46,7 +53,9 @@ export class DockerManager {
     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
     this.docker = new Docker();
     this.deploymentsDir = deploymentsDir;
-    this.templatesDir = templatesDir;
+    this.dockerComposeTemplatesDir = path.join(templatesDir, DOCKER_COMPOSE_TEMPLATES_DIR);
+    this.dockerfileTemplatesDir = path.join(templatesDir, DOCKERFILE_TEMPLATES_DIR);
+    this.extraServiceTemplatesDir = path.join(templatesDir, EXTRA_SERVICE_TEMPLATES_DIR);
     this.tracker = tracker;
     this.logger = logger;
   }
@@ -54,12 +63,13 @@ export class DockerManager {
   async deployPreview(config: IPreviewConfig): Promise<{
     url: string;
     appPort: number;
-    dbPort: number;
+    exposedAppPort: number;
+    exposedDbPort: number;
     framework: TFramework;
     dbType: TDatabaseType;
   }> {
     const workDir = path.join(this.deploymentsDir, config.projectSlug, `pr-${config.prNumber}`);
-    const { appPort, dbPort } = this.tracker.allocatePorts(config.deploymentId);
+    const portAllocation = this.tracker.allocatePorts(config.deploymentId);
 
     try {
       // verify that the workDir does not exist
@@ -80,18 +90,27 @@ export class DockerManager {
       await execAsync(`git checkout ${config.branch}`, { cwd: workDir });
       await execAsync(`git reset --hard ${config.commitSha}`, { cwd: workDir });
 
-      // Read repo preview-config.yml if present; use for framework, database, health path
+      // Read and validate repo preview-config.yml (required)
       const repoConfig = await readRepoPreviewConfig(workDir);
       const framework = await resolveFramework(workDir, repoConfig);
-      const dbType: TDatabaseType = repoConfig?.database ?? config.dbType;
-      const healthCheckPath = repoConfig?.health_check_path ?? '/health';
+      const dbType: TDatabaseType = repoConfig.database;
+      const healthCheckPath = repoConfig.health_check_path;
+      const appPort = repoConfig.app_port;
+
       this.logger.info(
-        { prNumber: config.prNumber, framework, dbType, fromRepoConfig: Boolean(repoConfig) },
+        {
+          prNumber: config.prNumber,
+          framework,
+          dbType,
+          appPort,
+          healthCheckPath,
+          fromRepoConfig: Boolean(repoConfig),
+        },
         'Resolved framework and database',
       );
 
       // Run build_commands from preview-config.yml (e.g. cp .env.example .env); fail on non-zero
-      if (repoConfig?.build_commands?.length) {
+      if (repoConfig.build_commands?.length) {
         for (let i = 0; i < repoConfig.build_commands.length; i++) {
           const cmd = repoConfig.build_commands[i];
           this.logger.info(
@@ -110,7 +129,7 @@ export class DockerManager {
       }
 
       // Ensure repo has a Dockerfile; inject framework default if missing
-      await this.ensureDockerfile(workDir, framework);
+      await this.ensureDockerfile(workDir, framework, repoConfig);
 
       // Normalize .yaml → .yml if repo has only docker-compose.preview.yaml; then check for repo compose
       await ensurePreviewComposeExtension(workDir);
@@ -120,7 +139,7 @@ export class DockerManager {
         const repoComposePath = getComposeFilePath(workDir);
         const repoComposeContent = await fs.readFile(repoComposePath, 'utf-8');
         const composeObj = parseComposeToObject(repoComposeContent);
-        injectPortsIntoRepoCompose(composeObj, appPort, dbPort, framework, dbType);
+        injectPortsIntoRepoCompose(composeObj, repoConfig, portAllocation);
         const generatedPath = getGeneratedComposeFilePath(workDir);
         await fs.writeFile(generatedPath, dumpCompose(composeObj), 'utf-8');
         composeFile = generatedPath;
@@ -128,12 +147,10 @@ export class DockerManager {
         composeFile = await this.generateDockerCompose(
           config.projectSlug,
           config.prNumber,
-          appPort,
-          dbPort,
-          framework,
-          repoConfig?.extra_services ?? [],
+          repoConfig,
+          portAllocation,
+          repoConfig.extra_services ?? [],
           workDir,
-          repoConfig ?? undefined,
         );
       }
 
@@ -154,7 +171,14 @@ export class DockerManager {
       const url = `${process.env.PREVIEW_BASE_URL || 'http://localhost'}/${config.projectSlug}/pr-${config.prNumber}/`;
       this.logger.info({ deploymentId: config.deploymentId, url }, 'Preview deployed successfully');
 
-      return { url, appPort, dbPort, framework, dbType };
+      return {
+        url,
+        appPort,
+        exposedAppPort: portAllocation.exposedAppPort,
+        exposedDbPort: portAllocation.exposedDbPort,
+        framework,
+        dbType,
+      };
     } catch (error: unknown) {
       this.logger.error(
         {
@@ -197,17 +221,16 @@ export class DockerManager {
       await ensurePreviewComposeExtension(workDir);
       const useRepoCompose = await hasRepoPreviewCompose(workDir);
       let composeFile: string;
+      const repoConfig = await readRepoPreviewConfig(workDir);
+
       if (useRepoCompose) {
         const repoComposePath = getComposeFilePath(workDir);
         const repoComposeContent = await fs.readFile(repoComposePath, 'utf-8');
         const composeObj = parseComposeToObject(repoComposeContent);
-        injectPortsIntoRepoCompose(
-          composeObj,
-          deployment.appPort,
-          deployment.dbPort,
-          deployment.framework,
-          deployment.dbType,
-        );
+        injectPortsIntoRepoCompose(composeObj, repoConfig, {
+          exposedAppPort: deployment.exposedAppPort,
+          exposedDbPort: deployment.exposedDbPort,
+        });
         const generatedPath = getGeneratedComposeFilePath(workDir);
         await fs.writeFile(generatedPath, dumpCompose(composeObj), 'utf-8');
         composeFile = generatedPath;
@@ -219,9 +242,8 @@ export class DockerManager {
       });
 
       // Wait for health check (use repo preview-config path if present)
-      const repoConfig = await readRepoPreviewConfig(workDir);
-      const healthCheckPath = repoConfig?.health_check_path ?? '/health';
-      const isHealthy = await this.waitForHealthy(deployment.appPort, healthCheckPath, 10);
+      const healthCheckPath = repoConfig.health_check_path;
+      const isHealthy = await this.waitForHealthy(deployment.exposedAppPort, healthCheckPath, 10);
       if (!isHealthy) {
         throw new Error(`Health check failed after update: ${deploymentId}`);
       }
@@ -312,7 +334,11 @@ export class DockerManager {
     }
   }
 
-  private async ensureDockerfile(workDir: string, framework: TFramework): Promise<void> {
+  private async ensureDockerfile(
+    workDir: string,
+    framework: TFramework,
+    repoConfig: IValidatedRepoPreviewConfig,
+  ): Promise<void> {
     // check if Dockerfile/dockerfile exists in the PR directory
     if (await fileExists(workDir, 'Dockerfile')) {
       this.logger.info({ workDir }, 'Dockerfile exists in the PR directory');
@@ -330,73 +356,67 @@ export class DockerManager {
     }
 
     // if not, use the framework template
-    const templateName = `Dockerfile.${framework}`;
-    const src = path.join(this.templatesDir, templateName);
-    const dest = path.join(workDir, 'Dockerfile');
-    try {
-      await fs.copyFile(src, dest);
-      this.logger.info({ workDir, framework }, 'Injected default Dockerfile for framework');
-    } catch (error: unknown) {
-      this.logger.warn(
-        { workDir, framework, error: error instanceof Error ? error.message : 'Unknown error' },
-        'No Dockerfile in repo and framework template missing; build may fail',
-      );
-    }
+    const templateName = `Dockerfile.${framework}.hbs`;
+    const src = path.join(this.dockerfileTemplatesDir, templateName);
+    const templateContent = await fs.readFile(src, 'utf-8');
+    const dockerfileContent = renderComposeTemplate(templateContent, {
+      appPort: repoConfig.app_port,
+      dbType: repoConfig.database,
+    });
+    await fs.writeFile(path.join(workDir, 'Dockerfile'), dockerfileContent, 'utf-8');
+    this.logger.info({ workDir, framework }, 'Injected default Dockerfile for framework');
   }
 
   private async generateDockerCompose(
     projectSlug: string,
     prNumber: number,
-    appPort: number,
-    dbPort: number,
-    framework: TFramework,
-    extraServices: TExtraService[],
+    repoConfig: IValidatedRepoPreviewConfig,
+    portAllocation: IPortAllocation,
+    extraServices: TExtraServiceWithoutDatabase[],
     workDir: string,
-    repoConfig?: IRepoPreviewConfig,
   ): Promise<string> {
     const templateNames: Record<TFramework, string> = {
       nestjs: 'docker-compose.nestjs.yml.hbs',
       go: 'docker-compose.go.yml.hbs',
       laravel: 'docker-compose.laravel.yml.hbs',
+      rust: 'docker-compose.rust.yml.hbs',
+      python: 'docker-compose.python.yml.hbs',
     };
-    const templatePath = path.join(this.templatesDir, templateNames[framework]);
+    const templatePath = path.join(
+      this.dockerComposeTemplatesDir,
+      templateNames[repoConfig.framework],
+    );
     const templateContent = await fs.readFile(templatePath, 'utf-8');
 
     const composeContent = renderComposeTemplate(templateContent, {
       projectSlug,
       prNumber,
-      appPort,
-      dbPort,
+      appPort: portAllocation.exposedAppPort,
+      dbPort: portAllocation.exposedDbPort,
+      appPortEnv: repoConfig.app_port_env,
+      dbType: repoConfig.database,
     });
     const composeObj = parseComposeToObject(composeContent);
 
-    const redisBlock = extraServices.includes('redis')
-      ? await this.loadRedisServiceBlock(projectSlug, prNumber)
-      : {};
-    mergeExtraServices(composeObj, extraServices, redisBlock);
-    applyRepoConfigToAppService(composeObj, repoConfig, framework);
+    await Promise.all(
+      ([...extraServices, repoConfig.database] satisfies TExtraService[]).map(async (service) => {
+        const block = await loadExtraServiceBlock(this.extraServiceTemplatesDir, {
+          extraService: service,
+          projectSlug,
+          prNumber,
+          exposedDbPort: portAllocation.exposedDbPort,
+        });
+
+        mergeExtraService(composeObj, service, block);
+      }),
+    );
+
+    applyRepoConfigToAppService(composeObj, repoConfig);
 
     const composeFile = getComposeFilePath(workDir);
     await fs.writeFile(composeFile, dumpCompose(composeObj), 'utf-8');
     return composeFile;
   }
-
-  /** Load Redis extra-service block from template (BullMQ etc.); app connects via network. */
-  private async loadRedisServiceBlock(
-    projectSlug: string,
-    prNumber: number,
-  ): Promise<Record<string, unknown>> {
-    const templatePath = path.join(this.templatesDir, 'extra-service.redis.yml');
-    const templateContent = await fs.readFile(templatePath, 'utf-8');
-    const rendered = renderComposeTemplate(templateContent, {
-      projectSlug,
-      prNumber,
-      appPort: 0,
-      dbPort: 0,
-    });
-    return parseComposeToObject(rendered) as Record<string, unknown>;
-  }
-
   private async waitForHealthy(
     port: number,
     healthPath: string,

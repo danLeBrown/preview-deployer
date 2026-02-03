@@ -6,15 +6,43 @@ import {
   IRepoPreviewConfig,
   TDatabaseType,
   TExtraService,
+  TExtraServiceWithoutDatabase,
   TFramework,
 } from './types/preview-config';
 import { fileExists } from './utils/framework-detection';
 
 const PREVIEW_CONFIG_FILENAME = 'preview-config.yml';
 
-const VALID_FRAMEWORKS: TFramework[] = ['nestjs', 'go', 'laravel'];
+const VALID_FRAMEWORKS: TFramework[] = ['nestjs', 'go', 'laravel', 'rust', 'python'];
 const VALID_DATABASES: TDatabaseType[] = ['postgres', 'mysql', 'mongodb'];
-const VALID_EXTRA_SERVICES: TExtraService[] = ['redis'];
+const VALID_EXTRA_SERVICES: TExtraService[] = ['redis', ...VALID_DATABASES];
+
+export const REQUIRED_REPO_PREVIEW_CONFIG_VALIDATORS = {
+  framework: (value: unknown): value is TFramework => isTFramework(value),
+  database: (value: unknown): value is TDatabaseType => isTDatabaseType(value),
+  health_check_path: (value: unknown): value is string =>
+    typeof value === 'string' && value.length > 0 && value.startsWith('/'),
+  app_port: (value: unknown): value is number => typeof value === 'number' && value > 0,
+  app_port_env: (value: unknown): value is string => typeof value === 'string' && value.length > 0,
+} as const;
+
+export type TRequiredRepoPreviewConfigFields = keyof typeof REQUIRED_REPO_PREVIEW_CONFIG_VALIDATORS;
+
+export const OPTIONAL_REPO_PREVIEW_CONFIG_VALIDATORS = {
+  build_commands: (value: unknown): value is string[] =>
+    Array.isArray(value) && value.every((v): v is string => typeof v === 'string'),
+  extra_services: (value: unknown): value is TExtraService[] =>
+    Array.isArray(value) && value.every((v): v is TExtraService => typeof v === 'string'),
+  startup_commands: (value: unknown): value is string[] =>
+    Array.isArray(value) && value.every((v): v is string => typeof v === 'string'),
+} as const;
+
+export type TOptionalRepoPreviewConfigFields = keyof typeof OPTIONAL_REPO_PREVIEW_CONFIG_VALIDATORS;
+
+export type IValidatedRepoPreviewConfig = Required<
+  Pick<IRepoPreviewConfig, TRequiredRepoPreviewConfigFields>
+> &
+  Partial<Pick<IRepoPreviewConfig, TOptionalRepoPreviewConfigFields>>;
 
 function isTFramework(value: unknown): value is TFramework {
   return typeof value === 'string' && VALID_FRAMEWORKS.includes(value as TFramework);
@@ -24,12 +52,12 @@ function isTDatabaseType(value: unknown): value is TDatabaseType {
   return typeof value === 'string' && VALID_DATABASES.includes(value as TDatabaseType);
 }
 
-function parseExtraServices(value: unknown): TExtraService[] {
+function parseExtraServices(value: unknown): TExtraServiceWithoutDatabase[] {
   if (!Array.isArray(value)) {
     return [];
   }
   return value.filter(
-    (v): v is TExtraService =>
+    (v): v is TExtraServiceWithoutDatabase =>
       typeof v === 'string' && VALID_EXTRA_SERVICES.includes(v as TExtraService),
   );
 }
@@ -43,6 +71,12 @@ function parseRepoPreviewConfig(raw: unknown): IRepoPreviewConfig {
   const out: IRepoPreviewConfig = {};
   if (isTFramework(obj.framework)) {
     out.framework = obj.framework;
+  }
+  if (typeof obj.app_port === 'number' && obj.app_port > 0) {
+    out.app_port = obj.app_port;
+  }
+  if (typeof obj.app_port_env === 'string' && obj.app_port_env.length > 0) {
+    out.app_port_env = obj.app_port_env;
   }
   if (isTDatabaseType(obj.database)) {
     out.database = obj.database;
@@ -86,20 +120,40 @@ function parseRepoPreviewConfig(raw: unknown): IRepoPreviewConfig {
   return out;
 }
 
+function validateRepoPreviewConfig(config: IRepoPreviewConfig): void {
+  Object.entries(REQUIRED_REPO_PREVIEW_CONFIG_VALIDATORS).forEach(([field, validator]) => {
+    if (!validator(config[field as keyof IRepoPreviewConfig])) {
+      throw new Error(`${field} is required`);
+    }
+  });
+  Object.entries(OPTIONAL_REPO_PREVIEW_CONFIG_VALIDATORS).forEach(([field, validator]) => {
+    if (
+      config[field as keyof IRepoPreviewConfig] &&
+      !validator(config[field as keyof IRepoPreviewConfig])
+    ) {
+      throw new Error(`${field} is not valid`);
+    }
+  });
+}
+
 /**
  * Read and parse preview-config.yml from the repo at workDir.
- * Returns null if the file is missing or invalid.
+ * Throws if the file is missing or if validation fails (with a specific error message).
  */
-export async function readRepoPreviewConfig(workDir: string): Promise<IRepoPreviewConfig | null> {
-  if (!(await fileExists(workDir, PREVIEW_CONFIG_FILENAME))) {
-    return null;
-  }
+export async function readRepoPreviewConfig(workDir: string): Promise<IValidatedRepoPreviewConfig> {
   const filePath = path.join(workDir, PREVIEW_CONFIG_FILENAME);
-  try {
-    const content = await fs.readFile(filePath, 'utf-8');
-    const raw = yaml.load(content);
-    return parseRepoPreviewConfig(raw);
-  } catch {
-    return null;
+  if (!(await fileExists(workDir, PREVIEW_CONFIG_FILENAME))) {
+    throw new Error(`${PREVIEW_CONFIG_FILENAME} is required at repository root but was not found`);
   }
+  const content = await fs.readFile(filePath, 'utf-8');
+  let raw: unknown;
+  try {
+    raw = yaml.load(content);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    throw new Error(`${PREVIEW_CONFIG_FILENAME} is invalid YAML: ${msg}`);
+  }
+  const config = parseRepoPreviewConfig(raw);
+  validateRepoPreviewConfig(config);
+  return config as IValidatedRepoPreviewConfig;
 }

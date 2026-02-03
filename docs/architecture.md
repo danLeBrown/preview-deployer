@@ -178,6 +178,25 @@ graph TB
 - **Internal API**: Orchestrator API not exposed publicly (internal port 3000)
 - **Keychain Storage**: Sensitive tokens stored in OS keychain
 
+### Repository and Compose Trust
+
+Preview deployments run code and config from the repository. Operators should only add repositories they trust to the allowed list.
+
+- **`preview-config.yml` (required)**  
+  The file is required at repo root and validated (required fields: `framework`, `database`, `health_check_path`, `app_port`, `app_port_env`). Missing or invalid config causes deployment to fail with a clear error. Optional fields are validated when present (e.g. `extra_services` must be from the allowlist).
+
+- **`build_commands`**  
+  Commands run on the **host** in the clone directory (e.g. `cp .env.example .env`). A malicious repo could specify arbitrary shell commands. Only allow repositories you trust; run the orchestrator in a dedicated environment so host impact is contained.
+
+- **Repo-owned `docker-compose.preview.yml`**  
+  When present, the orchestrator parses it, injects host ports, and optionally merges allowlisted extra services (redis, postgres, etc.) from **orchestrator-owned templates** only. The final compose file is then executed by Docker. The repo’s compose can still define services (e.g. `privileged`, `network_mode: host`); Docker will run whatever is in that file. For untrusted or less-trusted repos, prefer **not** providing a repo compose so the orchestrator generates compose entirely from its own templates.
+
+- **Extra services**  
+  Only allowlisted names (`redis`, `postgres`, `mysql`, `mongodb`) are supported. Each is loaded from a fixed orchestrator template and merged into the compose object; the repo cannot supply arbitrary compose fragments.
+
+- **YAML parsing**  
+  Both `preview-config.yml` and repo `docker-compose.preview.yml` are parsed with `js-yaml`. Content comes from the cloned repo. If parsing truly untrusted YAML is a concern, consider a safe/schema-limited loader (e.g. `safeLoad` and/or schema validation) in the future.
+
 ## Deployment Tracking
 
 Deployments are tracked in a JSON file (`/opt/preview-deployer/deployments.json`). Keys are **deployment ids** (`{projectSlug}-{prNumber}`):

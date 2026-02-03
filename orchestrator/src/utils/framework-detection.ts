@@ -127,14 +127,14 @@ export async function detectFramework(workDir: string): Promise<TFramework> {
 }
 
 /**
- * Resolve framework: use repo preview-config.yml value if present and valid,
+ * Resolve framework: use repo preview-config.yml framework if set,
  * otherwise detect from repo contents.
  */
 export async function resolveFramework(
   workDir: string,
-  repoConfig: IRepoPreviewConfig | null,
+  repoConfig: IRepoPreviewConfig,
 ): Promise<TFramework> {
-  if (repoConfig?.framework) {
+  if (repoConfig.framework) {
     return repoConfig.framework;
   }
   return detectFramework(workDir);

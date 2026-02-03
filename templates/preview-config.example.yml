@@ -4,6 +4,8 @@
 framework: nestjs # Options: nestjs, go, laravel (overrides auto-detection)
 database: postgres # Options: postgres, mysql, mongodb
 health_check_path: /health # Health check endpoint path
+app_port_env: PORT # Environment variable name for the app port
+app_port: 3000 # Port the app listens on
 
 
 # Optional: Commands run on the host before docker compose (e.g. copy .env)

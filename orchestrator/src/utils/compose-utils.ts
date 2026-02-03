@@ -3,12 +3,9 @@ import * as Handlebars from 'handlebars';
 import * as yaml from 'js-yaml';
 import * as path from 'path';
 
-import {
-  IRepoPreviewConfig,
-  TDatabaseType,
-  TExtraService,
-  TFramework,
-} from '../types/preview-config';
+import { IValidatedRepoPreviewConfig } from '../repo-config';
+import { IPortAllocation } from '../types/deployment';
+import { TDatabaseType, TFramework } from '../types/preview-config';
 import { fileExists } from './framework-detection';
 
 /** Preview compose filename (standard). Repo may provide it or we generate it. Same name either way. */
@@ -30,8 +27,11 @@ const REPO_PREVIEW_COMPOSE_NAMES = [
 export interface IComposeTemplateData {
   projectSlug: string;
   prNumber: number;
+  exposedAppPort: number;
+  exposedDbPort: number;
   appPort: number;
-  dbPort: number;
+  appPortEnv: string;
+  dbType: TDatabaseType;
 }
 
 /** Returns true if the repo has docker-compose.preview.yml or docker-compose.preview.yaml in workDir (exact names only). */
@@ -68,14 +68,6 @@ export function getGeneratedComposeFilePath(workDir: string): string {
   return path.join(workDir, COMPOSE_PREVIEW_GENERATED_FILENAME);
 }
 
-/** Default container port for app per framework (NestJS 3000, Go 8080, Laravel 8000). */
-export const APP_CONTAINER_PORT_BY_FRAMEWORK: Record<TFramework, number> = {
-  nestjs: 3000,
-  go: 8080,
-  laravel: 8000,
-};
-
-/** Default container port for db per database type. */
 export const DB_CONTAINER_PORT_BY_DATABASE: Record<TDatabaseType, number> = {
   postgres: 5432,
   mysql: 3306,
@@ -89,23 +81,16 @@ export const DB_CONTAINER_PORT_BY_DATABASE: Record<TDatabaseType, number> = {
  */
 export function injectPortsIntoRepoCompose(
   composeObj: Record<string, unknown>,
-  appPort: number,
-  dbPort: number,
-  framework: TFramework,
-  dbType: TDatabaseType,
+  repoConfig: IValidatedRepoPreviewConfig,
+  portAllocation: IPortAllocation,
 ): void {
   const services = (composeObj.services ?? {}) as Record<string, unknown>;
-  const appContainerPort = APP_CONTAINER_PORT_BY_FRAMEWORK[framework];
-  const dbContainerPort = DB_CONTAINER_PORT_BY_DATABASE[dbType];
 
   const app = services.app;
   if (app !== null && typeof app === 'object') {
-    (app as Record<string, unknown>).ports = [`${appPort}:${appContainerPort}`];
-  }
-
-  const db = services.db;
-  if (db !== null && typeof db === 'object') {
-    (db as Record<string, unknown>).ports = [`${dbPort}:${dbContainerPort}`];
+    (app as Record<string, unknown>).ports = [
+      `${portAllocation.exposedAppPort}:${repoConfig.app_port}`,
+    ];
   }
 
   composeObj.services = services;
@@ -117,12 +102,17 @@ export function getDefaultCommandForFramework(framework: TFramework): string[] {
     nestjs: ['node', 'dist/main'],
     go: ['./server'],
     laravel: ['php', 'artisan', 'serve', '--host=0.0.0.0', '--port=8000'],
+    rust: ['cargo', 'run'],
+    python: ['python', 'app.py'],
   };
   return commands[framework];
 }
 
 /** Render Handlebars compose template with template data. Pure, testable. */
-export function renderComposeTemplate(templateContent: string, data: IComposeTemplateData): string {
+export function renderComposeTemplate<T extends Partial<IComposeTemplateData>>(
+  templateContent: string,
+  data: T,
+): string {
   const template = Handlebars.compile(templateContent);
   return template(data);
 }
@@ -133,60 +123,30 @@ export function parseComposeToObject(composeContent: string): Record<string, unk
   return (yaml.load(composeContent) as Record<string, unknown>) ?? {};
 }
 
-/** Merge extra services (e.g. redis) into compose object: add service block, app env, app depends_on. Mutates composeObj. */
-export function mergeExtraServices(
-  composeObj: Record<string, unknown>,
-  extraServices: TExtraService[],
-  redisServiceBlock: Record<string, unknown>,
-): void {
-  const services = (composeObj.services ?? {}) as Record<string, unknown>;
-  const app = (services.app ?? {}) as Record<string, unknown>;
-
-  for (const name of extraServices) {
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-    if (name === 'redis') {
-      (services as Record<string, unknown>).redis = redisServiceBlock;
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-      const env = (app.environment as string[]) ?? [];
-      if (!env.some((e) => e.startsWith('REDIS_URL='))) {
-        app.environment = [...env, 'REDIS_URL=redis://redis:6379'];
-      }
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-      const dependsOn = (app.depends_on as Record<string, unknown>) ?? {};
-      (dependsOn as Record<string, unknown>).redis = { condition: 'service_started' };
-      app.depends_on = dependsOn;
-    }
-  }
-
-  composeObj.services = services;
-}
-
-/** Wire env, env_file, and startup_commands from repo preview-config into app service. Mutates composeObj. */
 export function applyRepoConfigToAppService(
   composeObj: Record<string, unknown>,
-  repoConfig: IRepoPreviewConfig | undefined,
-  framework: TFramework,
+  repoConfig: IValidatedRepoPreviewConfig,
 ): void {
   const services = (composeObj.services ?? {}) as Record<string, unknown>;
   const app = (services.app ?? {}) as Record<string, unknown>;
 
-  if (repoConfig?.env?.length || repoConfig?.env_file) {
-    const currentEnv = app.environment;
-    const env = Array.isArray(currentEnv) ? (currentEnv as string[]) : [];
-    if (repoConfig.env?.length) {
-      app.environment = [...env, ...repoConfig.env];
-    }
-    if (repoConfig.env_file) {
-      app.env_file = Array.isArray(repoConfig.env_file)
-        ? repoConfig.env_file
-        : [repoConfig.env_file];
-    }
-  }
+  // if (repoConfig.env?.length || repoConfig.env_file) {
+  //   const currentEnv = app.environment;
+  //   const env = Array.isArray(currentEnv) ? (currentEnv as string[]) : [];
+  //   if (repoConfig.env?.length) {
+  //     app.environment = [...env, ...repoConfig.env];
+  //   }
+  //   if (repoConfig.env_file) {
+  //     app.env_file = Array.isArray(repoConfig.env_file)
+  //       ? repoConfig.env_file
+  //       : [repoConfig.env_file];
+  //   }
+  // }
 
-  if (repoConfig?.startup_commands?.length) {
+  if (repoConfig.startup_commands?.length) {
     const script = [...repoConfig.startup_commands, 'exec "$@"'].join(' && ');
     app.entrypoint = ['/bin/sh', '-c', script, '--'];
-    app.command = getDefaultCommandForFramework(framework);
+    app.command = getDefaultCommandForFramework(repoConfig.framework);
   }
 
   composeObj.services = services;

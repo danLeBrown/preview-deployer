@@ -49,7 +49,7 @@ RUN addgroup -g 1001 -S nodejs && \
 
 USER nestjs
 
-EXPOSE 3000
+EXPOSE {{appPort}}
 
 # Start the application
 CMD ["node", "dist/main"]

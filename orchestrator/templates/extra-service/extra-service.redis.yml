@@ -3,6 +3,11 @@
 image: redis:7-alpine
 container_name: {{projectSlug}}-pr-{{prNumber}}-redis
 restart: unless-stopped
+healthcheck:
+  test: ["CMD-SHELL", "redis-cli ping"]
+  interval: 10s
+  timeout: 5s
+  retries: 5
 deploy:
   resources:
     limits:

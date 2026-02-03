@@ -2,7 +2,7 @@ import * as fsSync from 'fs';
 import * as fs from 'fs/promises';
 import { Logger } from 'pino';
 
-import { IDeploymentStore, IDeploymentTracker } from './types/deployment';
+import { IDeploymentStore, IDeploymentTracker, IPortAllocation } from './types/deployment';
 import { IDeploymentInfo, TPreviewStatus } from './types/preview-config';
 
 export class FileDeploymentTracker implements IDeploymentTracker {
@@ -103,7 +103,7 @@ export class FileDeploymentTracker implements IDeploymentTracker {
     }
   }
 
-  allocatePorts(deploymentId: string): { appPort: number; dbPort: number } {
+  allocatePorts(deploymentId: string): IPortAllocation {
     const APP_BASE = 8000;
     const DB_BASE = 9000;
 
@@ -117,8 +117,8 @@ export class FileDeploymentTracker implements IDeploymentTracker {
       }
 
       const allocatedPorts = Object.values(store.portAllocations);
-      const usedApp = new Set(allocatedPorts.map((p) => p.appPort));
-      const usedDb = new Set(allocatedPorts.map((p) => p.dbPort));
+      const usedApp = new Set(allocatedPorts.map((p) => p.exposedAppPort));
+      const usedDb = new Set(allocatedPorts.map((p) => p.exposedDbPort));
 
       let appPort = APP_BASE;
       while (usedApp.has(appPort) && appPort <= 65535) {
@@ -133,11 +133,11 @@ export class FileDeploymentTracker implements IDeploymentTracker {
         throw new Error(`Port allocation exhausted for deployment ${deploymentId}`);
       }
 
-      store.portAllocations[deploymentId] = { appPort, dbPort };
+      store.portAllocations[deploymentId] = { exposedAppPort: appPort, exposedDbPort: dbPort };
       fsSync.writeFileSync(this.storePath, JSON.stringify(store, null, 2), 'utf-8');
 
       this.logger.info({ deploymentId, appPort, dbPort }, 'Allocated ports');
-      return { appPort, dbPort };
+      return { exposedAppPort: appPort, exposedDbPort: dbPort };
     } catch (error: unknown) {
       if (error instanceof Error) {
         this.logger.error({ error: error.message }, 'Failed to allocate ports');
@@ -147,11 +147,11 @@ export class FileDeploymentTracker implements IDeploymentTracker {
       if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
         const store: IDeploymentStore = {
           deployments: {},
-          portAllocations: { [deploymentId]: { appPort: APP_BASE, dbPort: DB_BASE } },
+          portAllocations: { [deploymentId]: { exposedAppPort: APP_BASE, exposedDbPort: DB_BASE } },
         };
         fsSync.writeFileSync(this.storePath, JSON.stringify(store, null, 2), 'utf-8');
         this.logger.info({ deploymentId, appPort: APP_BASE, dbPort: DB_BASE }, 'Allocated ports');
-        return { appPort: APP_BASE, dbPort: DB_BASE };
+        return { exposedAppPort: APP_BASE, exposedDbPort: DB_BASE };
       }
       throw error;
     }

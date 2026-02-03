@@ -125,7 +125,7 @@ describe('framework-detection', () => {
         return Promise.reject(new Error('ENOENT'));
       });
       fsMock.readFile.mockRejectedValue(new Error('ENOENT'));
-      const result = await resolveFramework('/repo', null);
+      const result = await resolveFramework('/repo', {});
       expect(result).toBe('go');
     });
 
