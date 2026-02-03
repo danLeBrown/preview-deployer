@@ -61,34 +61,37 @@ describe('FileDeploymentTracker', () => {
   describe('allocatePorts', () => {
     it('should allocate first available app and db ports (8000, 9000) for first deployment', () => {
       const result = tracker.allocatePorts('myorg-myapp-1');
-      expect(result).toEqual({ appPort: 8000, dbPort: 9000 });
+      expect(result).toEqual({ exposedAppPort: 8000, exposedDbPort: 9000 });
       const store = readStore(storePath);
-      expect(store.portAllocations['myorg-myapp-1']).toEqual({ appPort: 8000, dbPort: 9000 });
+      expect(store.portAllocations['myorg-myapp-1']).toEqual({
+        exposedAppPort: 8000,
+        exposedDbPort: 9000,
+      });
     });
 
     it('should return same ports for same deploymentId when already allocated', () => {
       tracker.allocatePorts('myorg-myapp-1');
       const result = tracker.allocatePorts('myorg-myapp-1');
-      expect(result).toEqual({ appPort: 8000, dbPort: 9000 });
+      expect(result).toEqual({ exposedAppPort: 8000, exposedDbPort: 9000 });
     });
 
     it('should allocate next free app and db ports for second deployment', () => {
       tracker.allocatePorts('myorg-myapp-1');
       const result = tracker.allocatePorts('myorg-myapp-2');
-      expect(result).toEqual({ appPort: 8001, dbPort: 9001 });
+      expect(result).toEqual({ exposedAppPort: 8001, exposedDbPort: 9001 });
     });
 
     it('should skip used ports when finding next free', () => {
       writeStore(storePath, {
         deployments: {},
         portAllocations: {
-          'a-1': { appPort: 8000, dbPort: 9000 },
-          'b-2': { appPort: 8001, dbPort: 9001 },
+          'a-1': { exposedAppPort: 8000, exposedDbPort: 9000 },
+          'b-2': { exposedAppPort: 8001, exposedDbPort: 9001 },
         },
       });
       tracker = new FileDeploymentTracker(storePath, logger as unknown as import('pino').Logger);
       const result = tracker.allocatePorts('c-3');
-      expect(result).toEqual({ appPort: 8002, dbPort: 9002 });
+      expect(result).toEqual({ exposedAppPort: 8002, exposedDbPort: 9002 });
     });
   });
 
@@ -118,7 +121,8 @@ describe('FileDeploymentTracker', () => {
         framework: 'nestjs',
         dbType: 'postgres',
         appPort: 8012,
-        dbPort: 9012,
+        exposedDbPort: 9012,
+        exposedAppPort: 8012,
         status: 'running',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -145,7 +149,8 @@ describe('FileDeploymentTracker', () => {
         framework: 'nestjs',
         dbType: 'postgres',
         appPort: 8000,
-        dbPort: 9000,
+        exposedDbPort: 9000,
+        exposedAppPort: 8000,
         status: 'running',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -169,7 +174,8 @@ describe('FileDeploymentTracker', () => {
         framework: 'nestjs',
         dbType: 'postgres',
         appPort: 8000,
-        dbPort: 9000,
+        exposedDbPort: 9000,
+        exposedAppPort: 8000,
         status: 'running',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -198,7 +204,8 @@ describe('FileDeploymentTracker', () => {
         framework: 'nestjs',
         dbType: 'postgres',
         appPort: 8000,
-        dbPort: 9000,
+        exposedAppPort: 8000,
+        exposedDbPort: 9000,
         status: 'running',
         createdAt: createdAt.toISOString(),
         updatedAt: createdAt.toISOString(),

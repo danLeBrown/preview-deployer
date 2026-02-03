@@ -79,6 +79,18 @@ Common issues and solutions for preview-deployer.
      -d '{"action":"opened",...}'
    ```
 
+### Missing or Invalid `preview-config.yml`
+
+**Symptoms**: Deployment fails with "preview-config.yml is required at repository root but was not found" or a validation error (e.g. "framework is required", "health_check_path is not valid").
+
+**Cause**: The orchestrator requires a valid `preview-config.yml` at the repository root. Required fields: `framework`, `database`, `health_check_path`, `app_port`, `app_port_env`.
+
+**Solutions**:
+
+1. Add `preview-config.yml` in the repo root (see [Configuration Reference](configuration.md#repository-configuration-preview-configyml)).
+2. Ensure all required fields are present and valid (e.g. `health_check_path` must start with `/`, `app_port` must be a positive number).
+3. If the file exists but deployment still fails, check orchestrator logs for the exact validation message (e.g. invalid YAML or missing field).
+
 ### Build Failures
 
 **Symptoms**: Preview deployment fails during build

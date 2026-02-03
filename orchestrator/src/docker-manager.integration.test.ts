@@ -100,14 +100,15 @@ describeIfRepo('DockerManager Integration', () => {
 
     expect(result.url).toBeDefined();
     expect(result.appPort).toBeGreaterThanOrEqual(8000);
-    expect(result.dbPort).toBeGreaterThanOrEqual(9000);
+    expect(result.exposedDbPort).toBeGreaterThanOrEqual(9000);
 
     await tracker.saveDeployment({
       ...config,
       framework: result.framework,
       dbType: result.dbType,
       appPort: result.appPort,
-      dbPort: result.dbPort,
+      exposedDbPort: result.exposedDbPort,
+      exposedAppPort: result.exposedAppPort,
       status: 'running',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),

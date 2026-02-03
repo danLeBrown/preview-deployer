@@ -1,24 +1,33 @@
-export type TFramework = 'nestjs' | 'go' | 'laravel';
+export type TFramework = 'nestjs' | 'go' | 'laravel' | 'rust' | 'python';
 export type TDatabaseType = 'postgres' | 'mysql' | 'mongodb';
 export type TPreviewStatus = 'building' | 'running' | 'failed' | 'stopped';
 export type TPRStatus = 'open' | 'closed' | 'merged';
 
 /** Known extra service template names (e.g. redis for BullMQ). */
-export type TExtraService = 'redis';
+export type TExtraServiceWithoutDatabase = 'redis';
 
-/** Parsed from repo-root preview-config.yml; all fields optional. */
+export type TExtraService = TExtraServiceWithoutDatabase | TDatabaseType;
+
+/** Parsed from repo-root preview-config.yml.
+ * Required fields (framework, database, health_check_path, app_port, app_port_env) are validated by repo-config.
+ * Optional fields are: build_commands, extra_services, env, env_file, startup_commands, dockerfile.
+ */
 export interface IRepoPreviewConfig {
   framework?: TFramework;
   database?: TDatabaseType;
   health_check_path?: string;
   build_commands?: string[];
-  extra_services?: TExtraService[];
+  extra_services?: TExtraServiceWithoutDatabase[];
   env?: string[];
   /** Path(s) to env file(s) relative to repo root (e.g. .env). Loaded by Compose at runtime. */
   env_file?: string | string[];
   /** Commands run inside the app container before the main process (e.g. migrations, seeding). */
   startup_commands?: string[];
   dockerfile?: string;
+  /** Port the app listens on. */
+  app_port?: number;
+  /** Environment variable name for the app port. */
+  app_port_env?: string;
 }
 
 export interface IPreviewConfig {
@@ -32,8 +41,6 @@ export interface IPreviewConfig {
   branch: string;
   commitSha: string;
   cloneUrl: string;
-  framework: TFramework;
-  dbType: TDatabaseType;
 }
 
 export interface IDeploymentInfo {
@@ -47,7 +54,9 @@ export interface IDeploymentInfo {
   framework: TFramework;
   dbType: TDatabaseType;
   appPort: number;
-  dbPort: number;
+  // dbPort: number;
+  exposedAppPort: number;
+  exposedDbPort: number;
   status: TPreviewStatus;
   createdAt: string;
   updatedAt: string;
@@ -81,9 +90,4 @@ export interface IWebhookPayload {
       login: string;
     };
   };
-}
-
-export interface IPortAllocation {
-  appPort: number;
-  dbPort: number;
 }

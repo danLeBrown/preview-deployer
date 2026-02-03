@@ -170,16 +170,14 @@ export class WebhookHandler {
       branch: pull_request.head.ref,
       commitSha: pull_request.head.sha,
       cloneUrl: pull_request.head.repo.clone_url,
-      framework: 'nestjs', // Will be detected during deployment
-      dbType: 'postgres',
     };
 
     // Deploy preview (framework and dbType resolved from repo preview-config.yml or detection)
-    const { url, appPort, dbPort, framework, dbType } =
+    const { url, appPort, exposedAppPort, exposedDbPort, framework, dbType } =
       await this.dockerManager.deployPreview(config);
 
     // Add nginx config
-    await this.nginxManager.addPreview(projectSlug, prNumber, appPort);
+    await this.nginxManager.addPreview(projectSlug, prNumber, exposedAppPort);
 
     // Save deployment info with resolved framework and dbType
     const deployment: IDeploymentInfo = {
@@ -187,7 +185,8 @@ export class WebhookHandler {
       framework,
       dbType,
       appPort,
-      dbPort,
+      exposedAppPort,
+      exposedDbPort,
       status: 'running',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),

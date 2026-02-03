@@ -1,0 +1,27 @@
+# Postgres extra service (database). Merged into compose when extra_services: [postgres].
+# App receives DATABASE_URL=postgresql://preview:preview@postgres:5432/pr_{{prNumber}} and depends_on: postgres.
+image: postgres:16-alpine
+container_name: {{projectSlug}}-pr-{{prNumber}}-postgres
+restart: unless-stopped
+ports:
+  - "{{exposedDbPort}}:5432"
+environment:
+  - POSTGRES_USER=preview
+  - POSTGRES_PASSWORD=preview
+  - POSTGRES_DB=pr_{{prNumber}}
+  - POSTGRES_HOST=localhost
+  - POSTGRES_PORT=5432
+healthcheck:
+  test: ["CMD-SHELL", "pg_isready -U preview"]
+  interval: 10s
+  timeout: 5s
+  retries: 5
+  start_period: 10s
+deploy:
+  resources:
+    limits:
+      cpus: '0.5'
+      memory: 512M
+    reservations:
+      cpus: '0.1'
+      memory: 256M

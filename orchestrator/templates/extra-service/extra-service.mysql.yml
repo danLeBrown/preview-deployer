@@ -1,0 +1,28 @@
+# MySQL extra service (database). Merged into compose when extra_services: [mysql].
+# App receives DATABASE_URL=mysql://preview:preview@mysql:3306/pr_{{prNumber}} and depends_on: mysql.
+image: mysql:8-alpine
+container_name: {{projectSlug}}-pr-{{prNumber}}-mysql
+restart: unless-stopped
+ports:
+  - "{{exposedDbPort}}:3306"
+environment:
+  - MYSQL_ROOT_PASSWORD=preview
+  - MYSQL_DATABASE=pr_{{prNumber}}
+  - MYSQL_USER=preview
+  - MYSQL_PASSWORD=preview
+  - MYSQL_HOST=localhost
+  - MYSQL_PORT=3306
+healthcheck:
+  test: ["CMD-SHELL", "mysqladmin ping -h localhost -u preview -ppreview"]
+  interval: 10s
+  timeout: 5s
+  retries: 5
+  start_period: 10s
+deploy:
+  resources:
+    limits:
+      cpus: '0.5'
+      memory: 512M
+    reservations:
+      cpus: '0.1'
+      memory: 256M

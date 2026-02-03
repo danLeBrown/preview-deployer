@@ -116,6 +116,9 @@ Unit tests cover:
 - **project-slug** (project-slug-util): `toProjectSlug`, `toDeploymentId`
 - **framework-detection**: NestJS/Go/Laravel detection, `resolveFramework` (mocked `fs/promises`)
 - **deployment-tracker**: `allocatePorts`, `releasePorts`, get/save/delete deployment, `getAllDeployments`, `getDeploymentAge` (temp file store, mock logger)
+- **compose-utils**: `renderComposeTemplate`, `parseComposeToObject`, `dumpCompose`, `getDefaultCommandForFramework`, `injectPortsIntoRepoCompose`, `applyRepoConfigToAppService`
+- **merge-extra-service-util**: `mergeExtraService` for redis, postgres, mysql, mongodb; unknown extra service throws
+- **repo-config**: `REQUIRED_REPO_PREVIEW_CONFIG_VALIDATORS`, `OPTIONAL_REPO_PREVIEW_CONFIG_VALIDATORS`, `readRepoPreviewConfig` (mocked `fs/promises` and `fileExists`) — missing file, invalid YAML, missing required field, valid config
 
 Integration tests:
 
