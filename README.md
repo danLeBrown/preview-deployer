@@ -70,10 +70,12 @@ preview-deployer/
 ## Testing
 
 ```bash
-pnpm --filter @preview-deployer/orchestrator run test:unit
+pnpm --filter @preview-deployer/orchestrator run test:unit   # unit only
+pnpm --filter @preview-deployer/orchestrator run test:all    # unit + integration
+pnpm --filter @preview-deployer/orchestrator run test:e2e    # E2E API tier (optional full tier with E2E_FULL=1)
 ```
 
-See [docs/testing.md](docs/testing.md) for test layers, coverage, and scripts.
+See [docs/testing.md](docs/testing.md) for integration, E2E, coverage, and env vars.
 
 ## Documentation
 

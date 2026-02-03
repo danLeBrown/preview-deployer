@@ -1,0 +1,27 @@
+{
+  "action": "opened",
+  "pull_request": {
+    "number": 42,
+    "head": {
+      "ref": "feature-branch",
+      "sha": "abc123def456",
+      "repo": {
+        "clone_url": "https://github.com/test-org/test-repo.git",
+        "name": "test-repo",
+        "owner": {
+          "login": "test-org"
+        }
+      }
+    },
+    "base": {
+      "ref": "main"
+    }
+  },
+  "repository": {
+    "full_name": "test-org/test-repo",
+    "name": "test-repo",
+    "owner": {
+      "login": "test-org"
+    }
+  }
+}

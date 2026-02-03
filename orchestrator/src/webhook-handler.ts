@@ -42,7 +42,13 @@ export class WebhookHandler {
 
     const hmac = crypto.createHmac('sha256', this.webhookSecret);
     const digest = 'sha256=' + hmac.update(payload).digest('hex');
-    const isValid = crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(digest));
+    const sigBuf = Buffer.from(signature);
+    const digestBuf = Buffer.from(digest);
+    if (sigBuf.length !== digestBuf.length) {
+      this.logger.warn('Webhook signature verification failed');
+      return false;
+    }
+    const isValid = crypto.timingSafeEqual(sigBuf, digestBuf);
 
     if (!isValid) {
       this.logger.warn('Webhook signature verification failed');

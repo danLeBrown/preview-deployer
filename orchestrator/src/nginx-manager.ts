@@ -8,14 +8,24 @@ import { promisify } from 'util';
 
 const execAsync = promisify(exec);
 
+/** Optional reload command; if provided, used instead of real nginx reload (e.g. no-op in tests). */
+export type NginxReloadCommand = () => Promise<void>;
+
+export interface NginxManagerOptions {
+  /** If provided, called after add/remove config instead of running sudo nginx -t / nginx -s reload. */
+  reloadCommand?: NginxReloadCommand | null;
+}
+
 export class NginxManager {
   private configDir: string;
   private template!: HandlebarsTemplateDelegate;
   private logger: Logger;
+  private reloadCommand: NginxReloadCommand | null;
 
-  constructor(configDir: string, logger: Logger) {
+  constructor(configDir: string, logger: Logger, options: NginxManagerOptions = {}) {
     this.configDir = configDir;
     this.logger = logger;
+    this.reloadCommand = options.reloadCommand ?? null;
     this.loadTemplate();
   }
 
@@ -82,6 +92,10 @@ export class NginxManager {
   }
 
   private async reloadNginx(): Promise<void> {
+    if (this.reloadCommand) {
+      await this.reloadCommand();
+      return;
+    }
     try {
       // Validate config first
       const { stdout: testOutput } = await execAsync('sudo nginx -t');

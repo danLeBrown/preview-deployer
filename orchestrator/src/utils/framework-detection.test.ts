@@ -1,5 +1,6 @@
 import * as fs from 'fs/promises';
 
+import type { IRepoPreviewConfig } from '../types/preview-config';
 import {
   detectFramework,
   detectGo,
@@ -7,7 +8,6 @@ import {
   detectNestJS,
   resolveFramework,
 } from './framework-detection';
-import type { IRepoPreviewConfig } from '../types/preview-config';
 
 jest.mock('fs/promises', () => ({
   access: jest.fn(),
@@ -80,7 +80,9 @@ describe('framework-detection', () => {
   describe('detectFramework', () => {
     it('should return first match (nestjs before go)', async () => {
       fsMock.access.mockImplementation((path: import('fs').PathLike) => {
-        if (String(path).includes('nest-cli.json')) return Promise.resolve(undefined);
+        if (String(path).includes('nest-cli.json')) {
+          return Promise.resolve(undefined);
+        }
         return Promise.reject(new Error('ENOENT'));
       });
       const result = await detectFramework('/repo');
@@ -89,7 +91,9 @@ describe('framework-detection', () => {
 
     it('should return go when nest not found but go.mod exists', async () => {
       fsMock.access.mockImplementation((path: import('fs').PathLike) => {
-        if (String(path).includes('go.mod')) return Promise.resolve(undefined);
+        if (String(path).includes('go.mod')) {
+          return Promise.resolve(undefined);
+        }
         return Promise.reject(new Error('ENOENT'));
       });
       fsMock.readFile.mockRejectedValue(new Error('ENOENT'));
@@ -115,7 +119,9 @@ describe('framework-detection', () => {
 
     it('should detect from repo when repo config has no framework', async () => {
       fsMock.access.mockImplementation((path: import('fs').PathLike) => {
-        if (String(path).includes('go.mod')) return Promise.resolve(undefined);
+        if (String(path).includes('go.mod')) {
+          return Promise.resolve(undefined);
+        }
         return Promise.reject(new Error('ENOENT'));
       });
       fsMock.readFile.mockRejectedValue(new Error('ENOENT'));
