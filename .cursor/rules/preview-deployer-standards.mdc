@@ -25,6 +25,7 @@ Before implementing new features or changes, read and follow these artifacts.
 - **Ports**: Global pool; next free app port from 8000, db from 9000 (keyed by deployment id).
 - **Path-based routing**: `/{projectSlug}/pr-{number}/`.
 - **Validation**: After code changes, run `pnpm build` and `node cli/dist/index.js --help` (or equivalent) before considering work done.
+- **Testing**: See [docs/testing.md](docs/testing.md) for how to run tests and **guidelines for writing tests** (layout, mocking, integration/E2E patterns, webhook signature, cleanup). Run orchestrator unit tests after code changes; add or update tests when adding or changing behavior.
 
 ## When adding or changing code
 

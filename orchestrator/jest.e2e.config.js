@@ -8,6 +8,7 @@ module.exports = {
   testMatch: ['<rootDir>/tests/e2e/**/*.e2e.test.ts'],
   testTimeout: 300000,
   maxWorkers: 1,
+  setupFiles: ['<rootDir>/tests/setup-env.ts'],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
   },
