@@ -9,13 +9,15 @@ export type TExtraServiceWithoutDatabase = 'redis';
 export type TExtraService = TExtraServiceWithoutDatabase | TDatabaseType;
 
 /** Parsed from repo-root preview-config.yml.
- * Required fields (framework, database, health_check_path, app_port, app_port_env) are validated by repo-config.
+ * Required fields (framework, database, health_check_path, app_port, app_port_env, app_entrypoint) are validated by repo-config.
  * Optional fields are: build_commands, extra_services, env, env_file, startup_commands, dockerfile.
  */
 export interface IRepoPreviewConfig {
   framework?: TFramework;
   database?: TDatabaseType;
   health_check_path?: string;
+  /** Entrypoint for the app (e.g. dist/main.js for NestJS, server for Go). Used in Dockerfile CMD. */
+  app_entrypoint?: string;
   build_commands?: string[];
   extra_services?: TExtraServiceWithoutDatabase[];
   env?: string[];

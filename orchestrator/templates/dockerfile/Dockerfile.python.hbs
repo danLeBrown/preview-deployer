@@ -18,4 +18,4 @@
     
     USER nobody
     EXPOSE {{appPort}}
-    CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "{{appPort}}"]
+    CMD ["uvicorn", "{{appEntrypoint}}", "--host", "0.0.0.0", "--port", "{{appPort}}"]

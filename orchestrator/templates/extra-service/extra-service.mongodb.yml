@@ -12,7 +12,7 @@ environment:
   - MONGO_HOST=localhost
   - MONGO_PORT=27017
 healthcheck:
-  test: ["CMD-SHELL", "mongo --eval 'db.runCommand({ ping: 1 })'"]
+  test: ["CMD-SHELL", "mongosh --eval 'db.runCommand({ ping: 1 })'"]
   interval: 10s
   timeout: 5s
   retries: 5

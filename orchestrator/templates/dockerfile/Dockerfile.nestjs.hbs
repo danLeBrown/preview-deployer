@@ -52,4 +52,4 @@ USER nestjs
 EXPOSE {{appPort}}
 
 # Start the application
-CMD ["node", "dist/main"]
+CMD ["node", "{{appEntrypoint}}"]

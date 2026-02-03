@@ -54,6 +54,12 @@ describe('repo-config', () => {
       expect(REQUIRED_REPO_PREVIEW_CONFIG_VALIDATORS.app_port_env('PORT')).toBe(true);
       expect(REQUIRED_REPO_PREVIEW_CONFIG_VALIDATORS.app_port_env('')).toBe(false);
     });
+    it('app_entrypoint: requires non-empty string', () => {
+      expect(REQUIRED_REPO_PREVIEW_CONFIG_VALIDATORS.app_entrypoint('dist/main.js')).toBe(true);
+      expect(REQUIRED_REPO_PREVIEW_CONFIG_VALIDATORS.app_entrypoint('server')).toBe(true);
+      expect(REQUIRED_REPO_PREVIEW_CONFIG_VALIDATORS.app_entrypoint('')).toBe(false);
+      expect(REQUIRED_REPO_PREVIEW_CONFIG_VALIDATORS.app_entrypoint(1)).toBe(false);
+    });
   });
 
   describe('OPTIONAL_REPO_PREVIEW_CONFIG_VALIDATORS', () => {
@@ -102,7 +108,7 @@ describe('repo-config', () => {
       await expect(readRepoPreviewConfig(workDir)).rejects.toThrow(/is required/);
     });
 
-    it('should return validated config when file is valid', async () => {
+    it('should throw when app_entrypoint is missing', async () => {
       fileExists.mockResolvedValue(true);
       fsMock.readFile.mockResolvedValue(`
 framework: nestjs
@@ -111,12 +117,26 @@ health_check_path: /health
 app_port: 3000
 app_port_env: PORT
 `);
+      await expect(readRepoPreviewConfig(workDir)).rejects.toThrow('app_entrypoint is required');
+    });
+
+    it('should return validated config when file is valid', async () => {
+      fileExists.mockResolvedValue(true);
+      fsMock.readFile.mockResolvedValue(`
+framework: nestjs
+database: postgres
+health_check_path: /health
+app_port: 3000
+app_port_env: PORT
+app_entrypoint: dist/main.js
+`);
       const config = await readRepoPreviewConfig(workDir);
       expect(config.framework).toBe('nestjs');
       expect(config.database).toBe('postgres');
       expect(config.health_check_path).toBe('/health');
       expect(config.app_port).toBe(3000);
       expect(config.app_port_env).toBe('PORT');
+      expect(config.app_entrypoint).toBe('dist/main.js');
     });
   });
 });

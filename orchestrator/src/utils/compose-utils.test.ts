@@ -14,6 +14,7 @@ const minimalValidConfig: IValidatedRepoPreviewConfig = {
   health_check_path: '/health',
   app_port: 3000,
   app_port_env: 'PORT',
+  app_entrypoint: 'dist/main.js',
 };
 
 describe('compose-utils', () => {
@@ -61,13 +62,16 @@ describe('compose-utils', () => {
 
   describe('getDefaultCommandForFramework', () => {
     it('should return correct command for nestjs', () => {
-      expect(getDefaultCommandForFramework('nestjs')).toEqual(['node', 'dist/main']);
+      expect(getDefaultCommandForFramework('nestjs', 'dist/main.js', 3000)).toEqual([
+        'node',
+        'dist/main.js',
+      ]);
     });
     it('should return correct command for go', () => {
-      expect(getDefaultCommandForFramework('go')).toEqual(['./server']);
+      expect(getDefaultCommandForFramework('go', 'server', 8080)).toEqual(['./server']);
     });
     it('should return correct command for laravel', () => {
-      expect(getDefaultCommandForFramework('laravel')).toEqual([
+      expect(getDefaultCommandForFramework('laravel', 'artisan serve', 8000)).toEqual([
         'php',
         'artisan',
         'serve',
@@ -76,8 +80,15 @@ describe('compose-utils', () => {
       ]);
     });
     it('should return correct command for rust and python', () => {
-      expect(getDefaultCommandForFramework('rust')).toEqual(['cargo', 'run']);
-      expect(getDefaultCommandForFramework('python')).toEqual(['python', 'app.py']);
+      expect(getDefaultCommandForFramework('rust', 'app', 8080)).toEqual(['./app']);
+      expect(getDefaultCommandForFramework('python', 'app.main:app', 8000)).toEqual([
+        'uvicorn',
+        'app.main:app',
+        '--host',
+        '0.0.0.0',
+        '--port',
+        '8000',
+      ]);
     });
   });
 
@@ -132,7 +143,7 @@ describe('compose-utils', () => {
         'npm run migration:run && npm run seed && exec "$@"',
         '--',
       ]);
-      expect(app.command).toEqual(['node', 'dist/main']);
+      expect(app.command).toEqual(['node', 'dist/main.js']);
     });
 
     it('should not mutate app when startup_commands absent', () => {

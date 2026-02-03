@@ -4,7 +4,7 @@
     
     COPY Cargo.toml ./
     COPY src ./src
-    COPY migrations ./migrations
+    COPY migrations ./migrations/
     RUN cargo build --release
     
     # ---- Production ----
@@ -16,5 +16,5 @@
     COPY --from=builder /usr/src/app/migrations ./migrations
     
     EXPOSE {{appPort}}
-    CMD ["./app"]
+    CMD ["{{appEntrypoint}}"]
     

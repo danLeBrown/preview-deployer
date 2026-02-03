@@ -23,6 +23,11 @@ app_port: 3000
 
 # Environment variable name for the app port (e.g. PORT)
 app_port_env: PORT
+
+# Entrypoint for the app; used in the Dockerfile CMD. Examples by framework:
+# NestJS: dist/main.js   Go: server   Rust: app   Python: app.main:app
+# Laravel: value is required but unused (php artisan serve is always used)
+app_entrypoint: dist/main.js
 ```
 
 ### Optional Fields

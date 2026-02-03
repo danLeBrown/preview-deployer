@@ -97,15 +97,24 @@ export function injectPortsIntoRepoCompose(
 }
 
 /** Default CMD per framework (must match Dockerfile template). Used when startup_commands override entrypoint. */
-export function getDefaultCommandForFramework(framework: TFramework): string[] {
-  const commands: Record<TFramework, string[]> = {
-    nestjs: ['node', 'dist/main'],
-    go: ['./server'],
-    laravel: ['php', 'artisan', 'serve', '--host=0.0.0.0', '--port=8000'],
-    rust: ['cargo', 'run'],
-    python: ['python', 'app.py'],
-  };
-  return commands[framework];
+export function getDefaultCommandForFramework(
+  framework: TFramework,
+  app_entrypoint: string,
+  app_port: number,
+): string[] {
+  switch (framework) {
+    case 'nestjs':
+      return ['node', app_entrypoint];
+    case 'go':
+    case 'rust':
+      return ['./' + app_entrypoint];
+    case 'python':
+      return ['uvicorn', app_entrypoint, '--host', '0.0.0.0', '--port', String(app_port)];
+    case 'laravel':
+      return ['php', 'artisan', 'serve', '--host=0.0.0.0', '--port=' + String(app_port)];
+    default:
+      return ['node', app_entrypoint];
+  }
 }
 
 /** Render Handlebars compose template with template data. Pure, testable. */
@@ -146,7 +155,11 @@ export function applyRepoConfigToAppService(
   if (repoConfig.startup_commands?.length) {
     const script = [...repoConfig.startup_commands, 'exec "$@"'].join(' && ');
     app.entrypoint = ['/bin/sh', '-c', script, '--'];
-    app.command = getDefaultCommandForFramework(repoConfig.framework);
+    app.command = getDefaultCommandForFramework(
+      repoConfig.framework,
+      repoConfig.app_entrypoint,
+      repoConfig.app_port,
+    );
   }
 
   composeObj.services = services;

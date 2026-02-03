@@ -7,6 +7,12 @@ health_check_path: /health # Health check endpoint path
 app_port_env: PORT # Environment variable name for the app port
 app_port: 3000 # Port the app listens on
 
+# example: for NestJS, app_entrypoint is dist/main.js
+# example: for Go, app_entrypoint is ./server
+# example: for Rust, app_entrypoint is ./target/release/app or ./app
+# example: for Python, app_entrypoint is app.main:app
+app_entrypoint: dist/main.js # Entrypoint for the app
+
 
 # Optional: Commands run on the host before docker compose (e.g. copy .env)
 # build_commands:

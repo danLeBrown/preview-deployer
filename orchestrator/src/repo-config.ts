@@ -24,6 +24,8 @@ export const REQUIRED_REPO_PREVIEW_CONFIG_VALIDATORS = {
     typeof value === 'string' && value.length > 0 && value.startsWith('/'),
   app_port: (value: unknown): value is number => typeof value === 'number' && value > 0,
   app_port_env: (value: unknown): value is string => typeof value === 'string' && value.length > 0,
+  app_entrypoint: (value: unknown): value is string =>
+    typeof value === 'string' && value.length > 0,
 } as const;
 
 export type TRequiredRepoPreviewConfigFields = keyof typeof REQUIRED_REPO_PREVIEW_CONFIG_VALIDATORS;
@@ -86,6 +88,9 @@ function parseRepoPreviewConfig(raw: unknown): IRepoPreviewConfig {
       ? obj.health_check_path
       : `/${obj.health_check_path}`;
     out.health_check_path = healthPath;
+  }
+  if (typeof obj.app_entrypoint === 'string' && obj.app_entrypoint.length > 0) {
+    out.app_entrypoint = obj.app_entrypoint;
   }
   if (
     Array.isArray(obj.build_commands) &&
