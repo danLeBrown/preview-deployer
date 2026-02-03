@@ -11,6 +11,6 @@
     # ssl_email: admin@example.com
 
   roles:
-    # - docker
-    # - nginx
+    - docker
+    - nginx
     - orchestrator

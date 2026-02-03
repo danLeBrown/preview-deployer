@@ -36,7 +36,7 @@ ${serverIp} ansible_user=root${keyArg}
       .join(' ');
 
     const cmd = `ansible-playbook -i ${inventoryPath} ${playbookFile}${varArgs ? ` ${varArgs}` : ''}`;
-    console.log(cmd);
+    // console.log(cmd);
 
     try {
       const { stdout, stderr } = await execAsync(cmd, {
