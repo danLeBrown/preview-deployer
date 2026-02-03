@@ -93,6 +93,13 @@ describe('FileDeploymentTracker', () => {
       const result = tracker.allocatePorts('c-3');
       expect(result).toEqual({ exposedAppPort: 8002, exposedDbPort: 9002 });
     });
+
+    it('should skip excludePorts even when not in portAllocations (Docker-bound ports)', () => {
+      writeStore(storePath, { deployments: {}, portAllocations: {} });
+      tracker = new FileDeploymentTracker(storePath, logger as unknown as import('pino').Logger);
+      const result = tracker.allocatePorts('x', { excludePorts: [8000, 9000] });
+      expect(result).toEqual({ exposedAppPort: 8001, exposedDbPort: 9001 });
+    });
   });
 
   describe('releasePorts', () => {

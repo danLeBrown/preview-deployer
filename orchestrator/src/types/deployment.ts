@@ -19,7 +19,7 @@ export interface IDeploymentTracker {
   getAllDeployments(): IDeploymentInfo[];
   updateDeploymentStatus(deploymentId: string, status: TPreviewStatus): Promise<void>;
   updateDeploymentComment(deploymentId: string, commentId: number): Promise<void>;
-  allocatePorts(deploymentId: string): IPortAllocation;
+  allocatePorts(deploymentId: string, options?: { excludePorts?: number[] }): IPortAllocation;
   releasePorts(deploymentId: string): Promise<void>;
   getDeploymentAge(deploymentId: string): number; // Returns age in days
 }

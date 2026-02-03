@@ -103,9 +103,10 @@ export class FileDeploymentTracker implements IDeploymentTracker {
     }
   }
 
-  allocatePorts(deploymentId: string): IPortAllocation {
+  allocatePorts(deploymentId: string, options?: { excludePorts?: number[] }): IPortAllocation {
     const APP_BASE = 8000;
     const DB_BASE = 9000;
+    const excludePorts = options?.excludePorts ?? [];
 
     try {
       const data = fsSync.readFileSync(this.storePath, 'utf-8');
@@ -119,6 +120,10 @@ export class FileDeploymentTracker implements IDeploymentTracker {
       const allocatedPorts = Object.values(store.portAllocations);
       const usedApp = new Set(allocatedPorts.map((p) => p.exposedAppPort));
       const usedDb = new Set(allocatedPorts.map((p) => p.exposedDbPort));
+      for (const port of excludePorts) {
+        usedApp.add(port);
+        usedDb.add(port);
+      }
 
       let appPort = APP_BASE;
       while (usedApp.has(appPort) && appPort <= 65535) {
@@ -145,13 +150,26 @@ export class FileDeploymentTracker implements IDeploymentTracker {
         this.logger.error({ error: 'Unknown error' }, 'Failed to allocate ports');
       }
       if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+        const usedApp = new Set<number>(excludePorts);
+        const usedDb = new Set<number>(excludePorts);
+        let appPort = APP_BASE;
+        while (usedApp.has(appPort) && appPort <= 65535) {
+          appPort++;
+        }
+        let dbPort = DB_BASE;
+        while (usedDb.has(dbPort) && dbPort <= 65535) {
+          dbPort++;
+        }
+        if (appPort > 65535 || dbPort > 65535) {
+          throw new Error(`Port allocation exhausted for deployment ${deploymentId}`);
+        }
         const store: IDeploymentStore = {
           deployments: {},
-          portAllocations: { [deploymentId]: { exposedAppPort: APP_BASE, exposedDbPort: DB_BASE } },
+          portAllocations: { [deploymentId]: { exposedAppPort: appPort, exposedDbPort: dbPort } },
         };
         fsSync.writeFileSync(this.storePath, JSON.stringify(store, null, 2), 'utf-8');
-        this.logger.info({ deploymentId, appPort: APP_BASE, dbPort: DB_BASE }, 'Allocated ports');
-        return { exposedAppPort: APP_BASE, exposedDbPort: DB_BASE };
+        this.logger.info({ deploymentId, appPort, dbPort }, 'Allocated ports');
+        return { exposedAppPort: appPort, exposedDbPort: dbPort };
       }
       throw error;
     }

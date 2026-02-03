@@ -44,7 +44,7 @@ preview-deployer/
 
 - **Project slug**: Derived from repo `owner/name` (e.g. `myorg-myapp`). Used to avoid collisions when multiple repos have the same PR number.
 - **Deployment id**: `{projectSlug}-{prNumber}` (e.g. `myorg-myapp-12`). Single key for tracker, nginx config filenames, and compose project name.
-- **Port allocation**: Global pool; next free app port from 8000, next free db port from 9000. Keyed by deployment id.
+- **Port allocation**: Global pool; next free app port from 8000, next free db port from 9000. Keyed by deployment id. Allocation excludes host ports currently bound by running Docker containers (so failed deployments whose containers still run do not cause port collisions).
 - **Routing**: Path-based `/{projectSlug}/pr-{number}/`; nginx proxies to `http://localhost:{appPort}/`.
 - **Deployment tracking**: JSON file at `/opt/preview-deployer/deployments.json`; keys are deployment ids; atomic file operations.
 

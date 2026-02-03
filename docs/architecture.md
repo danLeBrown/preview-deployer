@@ -143,6 +143,7 @@ graph TB
 ## Port Allocation Strategy
 
 - **Global pool**: App ports start at 8000, DB ports at 9000. Each new deployment gets the next free app port and next free db port (keyed by deployment id).
+- **Docker-aware**: Allocation excludes host ports currently bound by running Docker containers. When a deployment fails after containers start but before the deployment record is saved, ports are released in the tracker but containers may still run; new deployments skip those bound ports so they are not reassigned.
 - Allows many deployments across multiple repos without collision.
 
 ## Routing Strategy

@@ -60,6 +60,30 @@ export class DockerManager {
     this.logger = logger;
   }
 
+  /**
+   * Returns host ports currently bound by running Docker containers.
+   * Used during port allocation so we never assign a port still in use (e.g. by a failed deployment's containers).
+   * On error (e.g. Docker unavailable), returns [] and logs so allocation can still proceed.
+   */
+  async getDockerBoundHostPorts(): Promise<number[]> {
+    try {
+      const containers = await this.docker.listContainers();
+      const bound = new Set<number>();
+      for (const c of containers) {
+        for (const p of c.Ports) {
+          bound.add(p.PublicPort);
+        }
+      }
+      return [...bound];
+    } catch (error: unknown) {
+      this.logger.warn(
+        { error: error instanceof Error ? error.message : 'Unknown error' },
+        'Could not list Docker bound ports; allocation will not exclude them',
+      );
+      return [];
+    }
+  }
+
   async deployPreview(config: IPreviewConfig): Promise<{
     url: string;
     appPort: number;
@@ -69,7 +93,10 @@ export class DockerManager {
     dbType: TDatabaseType;
   }> {
     const workDir = path.join(this.deploymentsDir, config.projectSlug, `pr-${config.prNumber}`);
-    const portAllocation = this.tracker.allocatePorts(config.deploymentId);
+    const boundPorts = await this.getDockerBoundHostPorts();
+    const portAllocation = this.tracker.allocatePorts(config.deploymentId, {
+      excludePorts: boundPorts,
+    });
 
     try {
       // verify that the workDir does not exist
