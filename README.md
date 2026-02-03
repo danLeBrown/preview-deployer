@@ -28,17 +28,22 @@ GitHub Webhook → Orchestrator API → Docker Containers → Nginx Reverse Prox
 
 ## Quick Start
 
-See [docs/quickstart.md](docs/quickstart.md) for detailed setup instructions.
+See the [Quickstart guide](https://docs.prvue.dev/quickstart) for detailed setup instructions.
 
 ```bash
 # Install dependencies
 pnpm install
 
-# Initialize configuration
-pnpm --filter cli run build
-preview init
+# Build (required before using the CLI)
+pnpm build
 
-# Deploy infrastructure
+# Option A: Use the CLI from the repo (no global install)
+pnpm preview init
+pnpm preview setup
+
+# Option B: Link the CLI globally so you can run `preview` from anywhere
+pnpm link --global -C cli
+preview init
 preview setup
 
 # Create a PR in your repository to trigger a preview deployment
@@ -75,15 +80,18 @@ pnpm --filter @preview-deployer/orchestrator run test:all    # unit + integratio
 pnpm --filter @preview-deployer/orchestrator run test:e2e    # E2E API tier (optional full tier with E2E_FULL=1)
 ```
 
-See [docs/testing.md](docs/testing.md) for integration, E2E, coverage, and env vars.
+See [Testing](https://docs.prvue.dev/testing) for integration, E2E, coverage, and env vars.
 
 ## Documentation
 
-- [Quickstart Guide](docs/quickstart.md) - Get started in minutes
-- [Architecture](docs/architecture.md) - System design and components
-- [Configuration](docs/configuration.md) - Configuration reference
-- [Testing](docs/testing.md) - Running tests and coverage
-- [Troubleshooting](docs/troubleshooting.md) - Common issues and solutions
+Documentation is published at **[docs.prvue.dev](https://docs.prvue.dev)** (Mintlify). For local development, run `mintlify dev` in the docs repo.
+
+- [Quickstart](https://docs.prvue.dev/quickstart) – Get started in minutes
+- [Architecture](https://docs.prvue.dev/architecture) – System design and components
+- [Configuration](https://docs.prvue.dev/configuration) – Configuration reference
+- [Examples](https://docs.prvue.dev/examples) – NestJS, Laravel, Go, Python, and Rust example repos
+- [Testing](https://docs.prvue.dev/testing) – Running tests and coverage
+- [Troubleshooting](https://docs.prvue.dev/troubleshooting) – Common issues and solutions
 
 ## Contributing
 

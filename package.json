@@ -6,6 +6,7 @@
   "license": "MIT",
   "scripts": {
     "build": "pnpm -r build",
+    "preview": "node cli/dist/index.js",
     "clean": "pnpm -r clean",
     "lint": "eslint \"{orchestrator,cli}/src/**/*.ts\" --fix",
     "format": "prettier --write \"**/*.{ts,tsx,json,md,yml,yaml}\"",

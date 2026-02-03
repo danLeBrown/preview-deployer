@@ -6,12 +6,17 @@ import * as path from 'path';
 
 import { Config, ConfigManager } from '../utils/config';
 
+const REPO_FORMAT = /^[^/]+\/[^/]+$/;
+
+function formatRepoList(repos: string[]): string {
+  return repos.map((r, i) => `  ${i + 1}. ${r}`).join('\n');
+}
+
 interface InquirerAnswers {
   doToken: string;
   region: string;
   dropletSize: string;
   githubToken: string;
-  repositories: string;
   cleanupTtlDays: string;
   maxConcurrentPreviews: string;
   alertEmail: string;
@@ -20,7 +25,9 @@ interface InquirerAnswers {
 export async function initCommand(): Promise<void> {
   console.log(chalk.blue('Initializing preview-deployer configuration...\n'));
 
-  const answers = await inquirer.prompt<InquirerAnswers>([
+  const answersBeforeRepos = await inquirer.prompt<
+    Pick<InquirerAnswers, 'doToken' | 'region' | 'dropletSize' | 'githubToken'>
+  >([
     {
       type: 'password',
       name: 'doToken',
@@ -52,15 +59,61 @@ export async function initCommand(): Promise<void> {
       message: 'GitHub personal access token:',
       validate: (input: string) => input.length > 0 || 'Token is required',
     },
-    {
-      type: 'input',
-      name: 'repositories',
-      message: 'GitHub repositories (comma-separated, format: owner/repo):',
-      validate: (input: string) => {
-        const repos = input.split(',').map((r) => r.trim());
-        return repos.length > 0 || 'At least one repository is required';
+  ]);
+
+  const repositories: string[] = [];
+  let reposConfirmed = false;
+  while (!reposConfirmed) {
+    let doneAdding = false;
+    while (!doneAdding) {
+      const message =
+        repositories.length === 0
+          ? 'GitHub repository (owner/repo):'
+          : `GitHub repository (owner/repo), or press Enter when done (${repositories.length} added):`;
+      const { repo } = await inquirer.prompt<{ repo: string }>([
+        {
+          type: 'input',
+          name: 'repo',
+          message,
+          validate: (input: string) => {
+            const trimmed = input.trim();
+            if (trimmed === '') {
+              if (repositories.length === 0) {
+                return 'At least one repository is required';
+              }
+              return true;
+            }
+            if (!REPO_FORMAT.test(trimmed)) {
+              return 'Use format owner/repo (e.g. myorg/myapp)';
+            }
+            return true;
+          },
+        },
+      ]);
+      const trimmed = repo.trim();
+      if (trimmed === '') {
+        doneAdding = true;
+      } else {
+        repositories.push(trimmed);
+      }
+    }
+
+    const { confirmed } = await inquirer.prompt<{ confirmed: boolean }>([
+      {
+        type: 'confirm',
+        name: 'confirmed',
+        message: `Repositories to add:\n${formatRepoList(repositories)}\n\nProceed with these?`,
+        default: true,
       },
-    },
+    ]);
+    if (confirmed) {
+      reposConfirmed = true;
+    }
+  }
+
+  const answersRest = await inquirer.prompt<
+    Pick<InquirerAnswers, 'cleanupTtlDays' | 'maxConcurrentPreviews' | 'alertEmail'>
+  >([
     {
       type: 'input',
       name: 'cleanupTtlDays',
@@ -94,19 +147,19 @@ export async function initCommand(): Promise<void> {
 
   const config: Config = {
     digitalocean: {
-      token: answers.doToken,
-      region: answers.region,
-      droplet_size: answers.dropletSize,
-      alert_email: answers.alertEmail,
+      token: answersBeforeRepos.doToken,
+      region: answersBeforeRepos.region,
+      droplet_size: answersBeforeRepos.dropletSize,
+      alert_email: answersRest.alertEmail,
     },
     github: {
-      token: answers.githubToken,
+      token: answersBeforeRepos.githubToken,
       webhook_secret: webhookSecret,
-      repositories: answers.repositories.split(',').map((r: string) => r.trim()),
+      repositories,
     },
     orchestrator: {
-      cleanup_ttl_days: parseInt(answers.cleanupTtlDays, 10) || 7,
-      max_concurrent_previews: parseInt(answers.maxConcurrentPreviews, 10) || 10,
+      cleanup_ttl_days: parseInt(answersRest.cleanupTtlDays, 10) || 7,
+      max_concurrent_previews: parseInt(answersRest.maxConcurrentPreviews, 10) || 10,
     },
   };
 
