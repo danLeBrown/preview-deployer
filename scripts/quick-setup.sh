@@ -32,6 +32,16 @@ pnpm build
 echo "✅ Projects built"
 echo ""
 
+# Copy .env.test.example to .env.test if missing (for E2E / integration tests)
+if [ ! -f orchestrator/.env.test ]; then
+    cp orchestrator/.env.test.example orchestrator/.env.test
+    echo "✅ Created orchestrator/.env.test from .env.test.example (edit it for full E2E / Docker integration)"
+    echo ""
+else
+    echo "✅ orchestrator/.env.test already exists"
+    echo ""
+fi
+
 # Run init if config doesn't exist
 if [ ! -f ~/.preview-deployer/config.yml ]; then
     echo "Running initialization..."

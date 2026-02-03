@@ -67,11 +67,22 @@ preview-deployer/
 - **PostgreSQL** (primary)
 - Architecture supports MySQL/MongoDB (future)
 
+## Testing
+
+```bash
+pnpm --filter @preview-deployer/orchestrator run test:unit   # unit only
+pnpm --filter @preview-deployer/orchestrator run test:all    # unit + integration
+pnpm --filter @preview-deployer/orchestrator run test:e2e    # E2E API tier (optional full tier with E2E_FULL=1)
+```
+
+See [docs/testing.md](docs/testing.md) for integration, E2E, coverage, and env vars.
+
 ## Documentation
 
 - [Quickstart Guide](docs/quickstart.md) - Get started in minutes
 - [Architecture](docs/architecture.md) - System design and components
 - [Configuration](docs/configuration.md) - Configuration reference
+- [Testing](docs/testing.md) - Running tests and coverage
 - [Troubleshooting](docs/troubleshooting.md) - Common issues and solutions
 
 ## Contributing

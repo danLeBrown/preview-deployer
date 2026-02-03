@@ -4,9 +4,9 @@ import { Logger } from 'pino';
 import { DockerManager } from './docker-manager';
 import { GitHubClient } from './github-client';
 import { NginxManager } from './nginx-manager';
-import { toDeploymentId, toProjectSlug } from './project-slug';
 import { IDeploymentTracker } from './types/deployment';
 import { IDeploymentInfo, IPreviewConfig, IWebhookPayload } from './types/preview-config';
+import { toDeploymentId, toProjectSlug } from './utils/project-slug-util';
 
 export class WebhookHandler {
   private webhookSecret: string;
@@ -42,7 +42,13 @@ export class WebhookHandler {
 
     const hmac = crypto.createHmac('sha256', this.webhookSecret);
     const digest = 'sha256=' + hmac.update(payload).digest('hex');
-    const isValid = crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(digest));
+    const sigBuf = Buffer.from(signature);
+    const digestBuf = Buffer.from(digest);
+    if (sigBuf.length !== digestBuf.length) {
+      this.logger.warn('Webhook signature verification failed');
+      return false;
+    }
+    const isValid = crypto.timingSafeEqual(sigBuf, digestBuf);
 
     if (!isValid) {
       this.logger.warn('Webhook signature verification failed');
