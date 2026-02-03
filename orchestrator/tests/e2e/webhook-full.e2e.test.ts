@@ -51,9 +51,8 @@ describeFull('Webhook Full E2E', () => {
   });
 
   afterEach(() => {
-    if (stopScheduledCleanup) {
-      stopScheduledCleanup();
-    }
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    stopScheduledCleanup?.();
   });
 
   it('should deploy via webhook and cleanup via DELETE', async () => {
@@ -84,7 +83,7 @@ describeFull('Webhook Full E2E', () => {
       githubToken: process.env.GITHUB_TOKEN!,
       ttlDays: 7,
       logger,
-      nginxReloadCommand: async () => {},
+      nginxReloadCommand: async () => void 0,
     });
     const { app } = result;
     stopScheduledCleanup = result.stopScheduledCleanup;

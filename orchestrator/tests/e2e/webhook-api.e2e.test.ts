@@ -16,10 +16,10 @@ function signWebhookPayload(payload: string, secret: string): string {
 }
 
 const mockLogger = {
-  debug: () => {},
-  error: () => {},
-  info: () => {},
-  warn: () => {},
+  debug: () => void 0,
+  error: () => void 0,
+  info: () => void 0,
+  warn: () => void 0,
   child: () => mockLogger,
 };
 
@@ -45,9 +45,8 @@ describe('Webhook API E2E', () => {
   });
 
   afterEach(() => {
-    if (stopScheduledCleanup) {
-      stopScheduledCleanup();
-    }
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    stopScheduledCleanup?.();
   });
 
   it('should handle full API flow: health -> webhook -> list -> delete -> list empty', async () => {
@@ -81,7 +80,7 @@ describe('Webhook API E2E', () => {
       logger: mockLogger as never,
       githubClient: mockGitHubClient,
       dockerManager: mockDockerManager,
-      nginxReloadCommand: async () => {},
+      nginxReloadCommand: async () => void 0,
     });
     const { app } = result;
     stopScheduledCleanup = result.stopScheduledCleanup;
@@ -147,7 +146,7 @@ describe('Webhook API E2E', () => {
       logger: mockLogger as never,
       githubClient: mockGitHubClient,
       dockerManager: mockDockerManager,
-      nginxReloadCommand: async () => {},
+      nginxReloadCommand: async () => void 0,
     });
     const { app } = result;
     stopScheduledCleanup = result.stopScheduledCleanup;
