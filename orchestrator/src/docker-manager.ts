@@ -19,7 +19,9 @@ import {
   dumpCompose,
   ensurePreviewComposeExtension,
   getComposeFilePath,
+  getGeneratedComposeFilePath,
   hasRepoPreviewCompose,
+  injectPortsIntoRepoCompose,
   mergeExtraServices,
   parseComposeToObject,
   renderComposeTemplate,
@@ -113,37 +115,38 @@ export class DockerManager {
       // Normalize .yaml → .yml if repo has only docker-compose.preview.yaml; then check for repo compose
       await ensurePreviewComposeExtension(workDir);
       const useRepoCompose = await hasRepoPreviewCompose(workDir);
-      const composeFile = useRepoCompose
-        ? getComposeFilePath(workDir)
-        : await this.generateDockerCompose(
-            config.projectSlug,
-            config.prNumber,
-            appPort,
-            dbPort,
-            framework,
-            repoConfig?.extra_services ?? [],
-            workDir,
-            repoConfig ?? undefined,
-          );
+      let composeFile: string;
+      if (useRepoCompose) {
+        const repoComposePath = getComposeFilePath(workDir);
+        const repoComposeContent = await fs.readFile(repoComposePath, 'utf-8');
+        const composeObj = parseComposeToObject(repoComposeContent);
+        injectPortsIntoRepoCompose(composeObj, appPort, dbPort, framework, dbType);
+        const generatedPath = getGeneratedComposeFilePath(workDir);
+        await fs.writeFile(generatedPath, dumpCompose(composeObj), 'utf-8');
+        composeFile = generatedPath;
+      } else {
+        composeFile = await this.generateDockerCompose(
+          config.projectSlug,
+          config.prNumber,
+          appPort,
+          dbPort,
+          framework,
+          repoConfig?.extra_services ?? [],
+          workDir,
+          repoConfig ?? undefined,
+        );
+      }
 
       this.logger.info(
         { deploymentId: config.deploymentId, useRepoCompose },
         'Building containers',
       );
-      const composeEnv = useRepoCompose
-        ? {
-            ...process.env,
-            PREVIEW_APP_PORT: String(appPort),
-            PREVIEW_DB_PORT: String(dbPort),
-          }
-        : undefined;
       await execAsync(`docker compose -p ${config.deploymentId} -f ${composeFile} up -d --build`, {
         cwd: workDir,
-        env: composeEnv,
       });
 
       // Wait for health check
-      const isHealthy = await this.waitForHealthy(appPort, healthCheckPath, 5);
+      const isHealthy = await this.waitForHealthy(appPort, healthCheckPath, 10);
       if (!isHealthy) {
         throw new Error(`Health check failed for PR #${config.prNumber}`);
       }
@@ -193,23 +196,32 @@ export class DockerManager {
       // Normalize .yaml → .yml if needed; then rebuild (same compose file as deploy)
       await ensurePreviewComposeExtension(workDir);
       const useRepoCompose = await hasRepoPreviewCompose(workDir);
-      const composeFile = getComposeFilePath(workDir);
-      const composeEnv = useRepoCompose
-        ? {
-            ...process.env,
-            PREVIEW_APP_PORT: String(deployment.appPort),
-            PREVIEW_DB_PORT: String(deployment.dbPort),
-          }
-        : undefined;
+      let composeFile: string;
+      if (useRepoCompose) {
+        const repoComposePath = getComposeFilePath(workDir);
+        const repoComposeContent = await fs.readFile(repoComposePath, 'utf-8');
+        const composeObj = parseComposeToObject(repoComposeContent);
+        injectPortsIntoRepoCompose(
+          composeObj,
+          deployment.appPort,
+          deployment.dbPort,
+          deployment.framework,
+          deployment.dbType,
+        );
+        const generatedPath = getGeneratedComposeFilePath(workDir);
+        await fs.writeFile(generatedPath, dumpCompose(composeObj), 'utf-8');
+        composeFile = generatedPath;
+      } else {
+        composeFile = getComposeFilePath(workDir);
+      }
       await execAsync(`docker compose -p ${deploymentId} -f ${composeFile} up -d --build`, {
         cwd: workDir,
-        env: composeEnv,
       });
 
       // Wait for health check (use repo preview-config path if present)
       const repoConfig = await readRepoPreviewConfig(workDir);
       const healthCheckPath = repoConfig?.health_check_path ?? '/health';
-      const isHealthy = await this.waitForHealthy(deployment.appPort, healthCheckPath, 5);
+      const isHealthy = await this.waitForHealthy(deployment.appPort, healthCheckPath, 10);
       if (!isHealthy) {
         throw new Error(`Health check failed after update: ${deploymentId}`);
       }
@@ -241,7 +253,10 @@ export class DockerManager {
       deployment.projectSlug,
       `pr-${deployment.prNumber}`,
     );
-    const composeFile = getComposeFilePath(workDir);
+    const useRepoCompose = await hasRepoPreviewCompose(workDir);
+    const composeFile = useRepoCompose
+      ? getGeneratedComposeFilePath(workDir)
+      : getComposeFilePath(workDir);
 
     try {
       // Stop and remove containers

@@ -61,12 +61,10 @@ dockerfile: ./Dockerfile
 You can provide your own Docker Compose file **strictly for preview** by placing `docker-compose.preview.yml` or `docker-compose.preview.yaml` in your repository root (exact names only; no fuzzy matching). When present, the orchestrator uses it instead of generating one from framework templates (same idea as using your own Dockerfile).
 
 - **File names**: `docker-compose.preview.yml` or `docker-compose.preview.yaml` (in repo root). Only these two exact filenames are accepted. If you use `.yaml`, the orchestrator renames it to `.yml` so one standard path is used everywhere.
-- **When used**: If either file exists after clone/checkout, it is used for `docker compose -f docker-compose.preview.yml up/down`. Otherwise the orchestrator generates `docker-compose.preview.yml` from templates.
-- **Ports**: The orchestrator sets `PREVIEW_APP_PORT` and `PREVIEW_DB_PORT` when running compose. Your compose should use these so nginx and port allocation work, e.g.:
-  - App: `ports: ["${PREVIEW_APP_PORT:-8000}:3000"]`
-  - DB: `ports: ["${PREVIEW_DB_PORT:-9000}:5432"]`
+- **When used**: If either file exists after clone/checkout, the orchestrator parses it, injects host port mappings (see Ports), and writes `docker-compose.preview.generated.yml` in the deployment directory. That generated file is used for `docker compose up/down`. Otherwise the orchestrator generates `docker-compose.preview.yml` from templates.
+- **Ports**: Do **not** specify host ports for the `app` or `db` services in your compose file. The orchestrator injects them at runtime so each preview gets unique ports and nginx can route correctly. Use service names `app` and `db`. Container ports are inferred from framework (NestJS 3000, Go 8080, Laravel 8000) and database type (Postgres 5432, MySQL 3306, MongoDB 27017). If you omit `ports` for `app`/`db`, we add them; if you had host ports, we override them.
 - **Project name**: The orchestrator always runs with `-p <deploymentId>` (e.g. `myorg-myapp-12`). Do not rely on a fixed project name in your file.
-- **Rebuild/cleanup**: Update and cleanup use the same file: `docker-compose.preview.yml` (repo-owned if present, otherwise the one we generated).
+- **Rebuild/cleanup**: Update and cleanup use the same generated file: `docker-compose.preview.generated.yml` when you provide repo compose, otherwise `docker-compose.preview.yml` (orchestrator-generated).
 
 ## CLI Configuration (`~/.preview-deployer/config.yml`)
 
