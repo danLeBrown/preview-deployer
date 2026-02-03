@@ -34,7 +34,7 @@ export async function loadExtraServiceBlock(
   return loader(extraServiceTemplatesDir, data);
 }
 
-/** Load Redis extra-service block from template (BullMQ etc.); app connects via network. */
+/** Load Redis extra-service block from template; application connects via network. */
 export async function loadRedisServiceBlock(
   extraServiceTemplatesDir: string,
   data: IDatabaseExtraServiceTemplateData,

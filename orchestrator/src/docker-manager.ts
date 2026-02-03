@@ -398,8 +398,11 @@ export class DockerManager {
     });
     const composeObj = parseComposeToObject(composeContent);
 
+    const allServices: TExtraService[] = Array.from(
+      new Set<TExtraService>([...extraServices, repoConfig.database]),
+    );
     await Promise.all(
-      ([...extraServices, repoConfig.database] satisfies TExtraService[]).map(async (service) => {
+      allServices.map(async (service) => {
         const block = await loadExtraServiceBlock(this.extraServiceTemplatesDir, {
           extraService: service,
           projectSlug,
