@@ -361,6 +361,7 @@ export class DockerManager {
     const templateContent = await fs.readFile(src, 'utf-8');
     const dockerfileContent = renderComposeTemplate(templateContent, {
       appPort: repoConfig.app_port,
+      appEntrypoint: repoConfig.app_entrypoint,
       dbType: repoConfig.database,
     });
     await fs.writeFile(path.join(workDir, 'Dockerfile'), dockerfileContent, 'utf-8');

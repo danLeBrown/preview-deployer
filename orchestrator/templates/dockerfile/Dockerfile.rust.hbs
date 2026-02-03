@@ -16,5 +16,5 @@
     COPY --from=builder /usr/src/app/migrations ./migrations
     
     EXPOSE {{appPort}}
-    CMD ["./app"]
+    CMD ["./{{appEntrypoint}}"]
     
