@@ -7,6 +7,7 @@ import { destroyCommand } from './commands/destroy';
 import { initCommand } from './commands/init';
 import { setupCommand } from './commands/setup';
 import { statusCommand } from './commands/status';
+import { syncCommand } from './commands/sync';
 
 const program = new Command();
 
@@ -49,6 +50,20 @@ program
   .action(async () => {
     try {
       await statusCommand();
+    } catch (error: unknown) {
+      console.error(
+        chalk.red(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`),
+      );
+      process.exit(1);
+    }
+  });
+
+program
+  .command('sync')
+  .description('Sync orchestrator code to server (build, rsync, restart)')
+  .action(async () => {
+    try {
+      await syncCommand();
     } catch (error: unknown) {
       console.error(
         chalk.red(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`),

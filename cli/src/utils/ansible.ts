@@ -24,22 +24,24 @@ ${serverIp} ansible_user=root${keyArg}
     return Promise.resolve(inventoryPath);
   }
 
-  async runPlaybook(inventoryPath: string, extraVars: Record<string, string>): Promise<void> {
-    console.log(chalk.blue('Running Ansible playbook...'));
+  async runPlaybook(
+    inventoryPath: string,
+    extraVars: Record<string, string>,
+    playbookFile = 'playbook.yml',
+  ): Promise<void> {
+    console.log(chalk.blue(`Running Ansible playbook (${playbookFile})...`));
 
     const varArgs = Object.entries(extraVars)
       .map(([key, value]) => `-e "${key}=${value}"`)
       .join(' ');
 
-    // console.log(`ansible-playbook -i ${inventoryPath} playbook.yml ${varArgs}`);
+    const cmd = `ansible-playbook -i ${inventoryPath} ${playbookFile}${varArgs ? ` ${varArgs}` : ''}`;
+    console.log(cmd);
 
     try {
-      const { stdout, stderr } = await execAsync(
-        `ansible-playbook -i ${inventoryPath} playbook.yml ${varArgs}`,
-        {
-          cwd: this.ansibleDir,
-        },
-      );
+      const { stdout, stderr } = await execAsync(cmd, {
+        cwd: this.ansibleDir,
+      });
 
       if (stdout) {
         console.log(stdout);

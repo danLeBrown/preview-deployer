@@ -20,6 +20,7 @@ preview init
 ```
 
 This will prompt for:
+
 - Digital Ocean API token
 - GitHub personal access token
 - Repository configuration
@@ -34,10 +35,21 @@ preview setup
 ```
 
 This will:
+
 1. Initialize Terraform
 2. Provision Digital Ocean droplet
 3. Configure server with Ansible
 4. Create GitHub webhooks
+
+### sync
+
+Sync orchestrator code to the server (build locally, rsync, restart). Use after initial setup when you change orchestrator code.
+
+```bash
+preview sync
+```
+
+Uses Terraform output for the server IP. Set `PREVIEW_SSH_KEY` to override the default SSH private key path (`~/.ssh/digital_ocean_ed25519`).
 
 ### status
 
@@ -48,6 +60,7 @@ preview status
 ```
 
 Shows:
+
 - Infrastructure status
 - Orchestrator health
 - Active preview deployments
@@ -61,6 +74,7 @@ preview destroy
 ```
 
 This will:
+
 1. Cleanup all preview deployments
 2. Delete GitHub webhooks
 3. Destroy Terraform infrastructure
