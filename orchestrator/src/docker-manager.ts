@@ -190,7 +190,7 @@ export class DockerManager {
       });
 
       // Wait for health check
-      const isHealthy = await this.waitForHealthy(appPort, healthCheckPath, 10);
+      const isHealthy = await this.waitForHealthy(appPort, healthCheckPath, 15);
       if (!isHealthy) {
         throw new Error(`Health check failed for PR #${config.prNumber}`);
       }
@@ -270,7 +270,7 @@ export class DockerManager {
 
       // Wait for health check (use repo preview-config path if present)
       const healthCheckPath = repoConfig.health_check_path;
-      const isHealthy = await this.waitForHealthy(deployment.exposedAppPort, healthCheckPath, 10);
+      const isHealthy = await this.waitForHealthy(deployment.exposedAppPort, healthCheckPath, 15);
       if (!isHealthy) {
         throw new Error(`Health check failed after update: ${deploymentId}`);
       }

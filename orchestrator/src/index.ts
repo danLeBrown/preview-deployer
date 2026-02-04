@@ -59,6 +59,9 @@ try {
   }
 }
 
+const openApiBaseUrl =
+  process.env.ORCHESTRATOR_PUBLIC_URL || process.env.PREVIEW_BASE_URL || undefined;
+
 const { app, stopScheduledCleanup } = createApp({
   allowedRepos,
   deploymentsDir,
@@ -69,6 +72,7 @@ const { app, stopScheduledCleanup } = createApp({
   githubToken: process.env.GITHUB_TOKEN!,
   ttlDays,
   logger,
+  openApiBaseUrl,
 });
 
 const server = app.listen(port, () => {

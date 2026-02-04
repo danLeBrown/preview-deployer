@@ -122,6 +122,47 @@ describe('Webhook API E2E', () => {
     expect(listAfterRes.body.deployments).toHaveLength(0);
   });
 
+  it('should serve OpenAPI spec at GET /openapi.json', async () => {
+    const mockGitHubClient = {
+      postComment: jest.fn(),
+      updateComment: jest.fn(),
+      checkPRStatus: jest.fn(),
+    } as unknown as GitHubClient;
+    const mockDockerManager = {
+      deployPreview: jest.fn(),
+      cleanupPreview: jest.fn(),
+      updatePreview: jest.fn(),
+    } as unknown as DockerManager;
+
+    const result = createApp({
+      allowedRepos,
+      deploymentsDir,
+      deploymentsDb,
+      nginxConfigDir,
+      templatesDir: path.join(__dirname, '../../templates'),
+      webhookSecret,
+      githubToken: 'test-token',
+      ttlDays: 7,
+      logger: mockLogger as never,
+      githubClient: mockGitHubClient,
+      dockerManager: mockDockerManager,
+      nginxReloadCommand: async () => void 0,
+    });
+    const { app } = result;
+    stopScheduledCleanup = result.stopScheduledCleanup;
+
+    const res = await request(app).get('/openapi.json');
+    expect(res.status).toBe(200);
+    expect(res.body.openapi).toBe('3.0.3');
+    expect(res.body.info).toBeDefined();
+    expect(res.body.info.title).toBe('Preview Deployer Orchestrator API');
+    expect(res.body.paths).toBeDefined();
+    expect(res.body.paths['/health']).toBeDefined();
+    expect(res.body.paths['/webhook/github']).toBeDefined();
+    expect(res.body.paths['/api/previews']).toBeDefined();
+    expect(res.body.paths['/api/previews/{deploymentId}']).toBeDefined();
+  });
+
   it('should reject webhook with invalid signature', async () => {
     const mockGitHubClient = {
       postComment: jest.fn(),

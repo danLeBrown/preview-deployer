@@ -126,7 +126,20 @@ DEPLOYMENTS_DB=/opt/preview-deployer/deployments.json
 
 # Logging
 LOG_LEVEL=info  # Options: debug, info, warn, error
+
+# Optional: Base URL for OpenAPI spec (servers[].url). Defaults to PREVIEW_BASE_URL when unset.
+# Set to the public URL of the orchestrator (e.g. https://preview.example.com) if your doc site or Swagger UI should reference it.
+# ORCHESTRATOR_PUBLIC_URL=https://preview.example.com
 ```
+
+### API reference (OpenAPI)
+
+The orchestrator exposes OpenAPI 3.0 documentation so you can generate API references (e.g. for a separate doc site) or explore the API interactively.
+
+- **OpenAPI JSON**: `GET /openapi.json` — Returns the OpenAPI 3.0 spec. Your doc site or API tooling can fetch this URL (from the orchestrator host, e.g. `http://SERVER_IP:3000/openapi.json`) to generate the API reference.
+- **Swagger UI**: `GET /api-docs` — Serves Swagger UI that loads the same spec, for interactive exploration (similar to NestJS’s default docs page).
+
+The spec’s `servers[].url` is set from `ORCHESTRATOR_PUBLIC_URL` if present, otherwise from `PREVIEW_BASE_URL`. If neither is set, the spec omits `servers` and clients can use the request host as the base URL.
 
 ## Terraform Variables
 

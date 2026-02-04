@@ -19,7 +19,7 @@ Before you begin, ensure you have:
 Clone the repository and install dependencies:
 
 ```bash
-git clone https://github.com/your-org/preview-deployer.git
+git clone https://github.com/danLeBrown/preview-deployer.git
 cd preview-deployer
 pnpm install
 pnpm build

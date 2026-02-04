@@ -1,11 +1,13 @@
 import express, { NextFunction, Request, Response } from 'express';
 import { Logger } from 'pino';
+import swaggerUi from 'swagger-ui-express';
 
 import { CleanupService } from './cleanup-service';
 import { FileDeploymentTracker } from './deployment-tracker';
 import { DockerManager } from './docker-manager';
 import { GitHubClient } from './github-client';
 import { NginxManager } from './nginx-manager';
+import { getOpenApiSpec } from './openapi';
 import { IWebhookPayload } from './types/preview-config';
 import { WebhookHandler } from './webhook-handler';
 
@@ -25,6 +27,8 @@ export interface AppOptions {
   dockerManager?: DockerManager;
   /** Optional no-op reload for tests (skip sudo nginx). */
   nginxReloadCommand?: () => Promise<void>;
+  /** Optional base URL for OpenAPI spec servers (e.g. PREVIEW_BASE_URL or ORCHESTRATOR_PUBLIC_URL). */
+  openApiBaseUrl?: string;
 }
 
 export interface CreateAppResult {
@@ -50,6 +54,7 @@ export function createApp(options: AppOptions): CreateAppResult {
     githubClient: providedGitHubClient,
     dockerManager: providedDockerManager,
     nginxReloadCommand,
+    openApiBaseUrl,
   } = options;
 
   const tracker = new FileDeploymentTracker(deploymentsDb, logger);
@@ -88,6 +93,12 @@ export function createApp(options: AppOptions): CreateAppResult {
     logger.info({ method: req.method, path: req.path }, 'Incoming request');
     next();
   });
+
+  const openApiSpec = getOpenApiSpec(openApiBaseUrl);
+  app.get('/openapi.json', (_req: Request, res: Response) => {
+    res.json(openApiSpec);
+  });
+  app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(openApiSpec));
 
   app.get('/health', (_req: Request, res: Response) => {
     res.json({

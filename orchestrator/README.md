@@ -52,10 +52,15 @@ Returns list of all active preview deployments.
 ### Delete Preview
 
 ```
-DELETE /api/previews/:prNumber
+DELETE /api/previews/:deploymentId
 ```
 
-Manually cleanup a preview deployment.
+Manually cleanup a preview deployment. `deploymentId` is `{projectSlug}-{prNumber}` (e.g. `myorg-myapp-12`).
+
+### API documentation
+
+- **OpenAPI JSON**: `GET /openapi.json` — OpenAPI 3.0 spec for the API (for doc sites or tooling).
+- **Swagger UI**: `GET /api-docs` — Interactive API docs.
 
 ## Development
 
