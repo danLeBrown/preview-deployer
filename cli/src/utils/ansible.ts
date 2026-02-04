@@ -54,11 +54,12 @@ ${serverIp} ansible_user=root${keyArg}
         chalk.red('Ansible playbook failed:'),
         error instanceof Error ? error.message : 'Unknown error',
       );
-      if (
-        'stderr' in (error as Record<string, unknown>) &&
-        typeof (error as Record<string, unknown>).stderr === 'string'
-      ) {
-        console.error(chalk.red('Ansible stderr:'), (error as Record<string, unknown>).stderr);
+      const err = error as Record<string, unknown>;
+      if (typeof err.stdout === 'string' && err.stdout.trim()) {
+        console.error(chalk.red('Ansible stdout:'), err.stdout);
+      }
+      if (typeof err.stderr === 'string' && err.stderr.trim()) {
+        console.error(chalk.red('Ansible stderr:'), err.stderr);
       }
       throw error;
     }

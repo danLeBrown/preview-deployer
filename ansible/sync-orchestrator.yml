@@ -28,6 +28,12 @@
           - '--exclude=node_modules'
           - '--exclude=src'
           - '--exclude=tsconfig.json'
+          - '--exclude=.env'
+          - '--exclude=.env.test'
+          - '--exclude=README.md'
+          - '--exclude=LICENSE'
+          - '--exclude=tests'
+          - '--exclude=*.test.ts'
 
     - name: Set ownership of orchestrator directory after sync
       ansible.builtin.file:
@@ -36,6 +42,13 @@
         owner: '{{ deployment_user }}'
         group: '{{ deployment_user }}'
         recurse: yes
+
+    - name: Install orchestrator dependencies on server
+      shell: . ~/.nvm/nvm.sh && pnpm install --production
+      args:
+        chdir: '{{ orchestrator_dir }}'
+        executable: /bin/bash
+      become_user: '{{ deployment_user }}'
 
     - name: Restart orchestrator service
       ansible.builtin.systemd:

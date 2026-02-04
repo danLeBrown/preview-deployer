@@ -83,6 +83,13 @@
       - '--exclude=node_modules'
       - '--exclude=src'
       - '--exclude=tsconfig.json'
+      - '--exclude=.env'
+      - '--exclude=.env.test'
+      - '--exclude=README.md'
+      - '--exclude=LICENSE'
+      - '--exclude=tests'
+      - '--exclude=*.test.ts'
+
   when: orchestrator_source == "local"
 
 - name: Set ownership of orchestrator directory after sync
