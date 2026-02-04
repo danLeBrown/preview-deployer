@@ -155,5 +155,46 @@ describe('compose-utils', () => {
       expect(app.entrypoint).toBeUndefined();
       expect(app.command).toBeUndefined();
     });
+
+    it('should set app.env_file when env_file is set in repo config', () => {
+      const composeObj: Record<string, unknown> = {
+        services: { app: { image: 'app' } },
+      };
+      const config: IValidatedRepoPreviewConfig = {
+        ...minimalValidConfig,
+        env_file: '.env',
+      };
+      applyRepoConfigToAppService(composeObj, config);
+      const app = (composeObj.services as Record<string, unknown>).app as Record<string, unknown>;
+      expect(app.env_file).toBe('.env');
+    });
+
+    it('should merge repo config env into app.environment', () => {
+      const composeObj: Record<string, unknown> = {
+        services: { app: { image: 'app', environment: ['EXISTING=1'] } },
+      };
+      const config: IValidatedRepoPreviewConfig = {
+        ...minimalValidConfig,
+        env: ['NODE_ENV=preview', 'DEBUG=true'],
+      };
+      applyRepoConfigToAppService(composeObj, config);
+      const app = (composeObj.services as Record<string, unknown>).app as Record<string, unknown>;
+      expect(app.environment).toEqual(['EXISTING=1', 'NODE_ENV=preview', 'DEBUG=true']);
+    });
+
+    it('should set both env_file and env when both present', () => {
+      const composeObj: Record<string, unknown> = {
+        services: { app: { image: 'app' } },
+      };
+      const config: IValidatedRepoPreviewConfig = {
+        ...minimalValidConfig,
+        env_file: '.env',
+        env: ['NODE_ENV=preview'],
+      };
+      applyRepoConfigToAppService(composeObj, config);
+      const app = (composeObj.services as Record<string, unknown>).app as Record<string, unknown>;
+      expect(app.env_file).toBe('.env');
+      expect(app.environment).toEqual(['NODE_ENV=preview']);
+    });
   });
 });

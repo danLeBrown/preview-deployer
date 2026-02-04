@@ -139,18 +139,16 @@ export function applyRepoConfigToAppService(
   const services = (composeObj.services ?? {}) as Record<string, unknown>;
   const app = (services.app ?? {}) as Record<string, unknown>;
 
-  // if (repoConfig.env?.length || repoConfig.env_file) {
-  //   const currentEnv = app.environment;
-  //   const env = Array.isArray(currentEnv) ? (currentEnv as string[]) : [];
-  //   if (repoConfig.env?.length) {
-  //     app.environment = [...env, ...repoConfig.env];
-  //   }
-  //   if (repoConfig.env_file) {
-  //     app.env_file = Array.isArray(repoConfig.env_file)
-  //       ? repoConfig.env_file
-  //       : [repoConfig.env_file];
-  //   }
-  // }
+  if (repoConfig.env?.length || repoConfig.env_file) {
+    const currentEnv = app.environment;
+    const env = Array.isArray(currentEnv) ? (currentEnv as string[]) : [];
+    if (repoConfig.env?.length) {
+      app.environment = [...env, ...repoConfig.env];
+    }
+    if (repoConfig.env_file) {
+      app.env_file = repoConfig.env_file;
+    }
+  }
 
   if (repoConfig.startup_commands?.length) {
     const script = [...repoConfig.startup_commands, 'exec "$@"'].join(' && ');

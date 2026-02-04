@@ -79,6 +79,14 @@ describe('repo-config', () => {
       );
       expect(OPTIONAL_REPO_PREVIEW_CONFIG_VALIDATORS.build_commands([1])).toBe(false);
     });
+    it('env_file: accepts single path string, rejects array and invalid values', () => {
+      expect(OPTIONAL_REPO_PREVIEW_CONFIG_VALIDATORS.env_file('.env')).toBe(true);
+      expect(OPTIONAL_REPO_PREVIEW_CONFIG_VALIDATORS.env_file('.env.preview')).toBe(true);
+      expect(OPTIONAL_REPO_PREVIEW_CONFIG_VALIDATORS.env_file('')).toBe(false);
+      expect(OPTIONAL_REPO_PREVIEW_CONFIG_VALIDATORS.env_file(['.env'])).toBe(false);
+      expect(OPTIONAL_REPO_PREVIEW_CONFIG_VALIDATORS.env_file('.env\n')).toBe(false);
+      expect(OPTIONAL_REPO_PREVIEW_CONFIG_VALIDATORS.env_file('path\0with-null')).toBe(false);
+    });
   });
 
   describe('readRepoPreviewConfig', () => {
@@ -137,6 +145,39 @@ app_entrypoint: dist/main.js
       expect(config.app_port).toBe(3000);
       expect(config.app_port_env).toBe('PORT');
       expect(config.app_entrypoint).toBe('dist/main.js');
+    });
+
+    it('should accept env_file as single string and include it in config', async () => {
+      fileExists.mockResolvedValue(true);
+      fsMock.readFile.mockResolvedValue(`
+framework: nestjs
+database: postgres
+health_check_path: /health
+app_port: 3000
+app_port_env: PORT
+app_entrypoint: dist/main.js
+env_file: .env
+`);
+      const config = await readRepoPreviewConfig(workDir);
+      expect(config.env_file).toBe('.env');
+    });
+
+    it('should throw when env_file is an array', async () => {
+      fileExists.mockResolvedValue(true);
+      fsMock.readFile.mockResolvedValue(`
+framework: nestjs
+database: postgres
+health_check_path: /health
+app_port: 3000
+app_port_env: PORT
+app_entrypoint: dist/main.js
+env_file:
+  - .env
+  - .env.preview
+`);
+      await expect(readRepoPreviewConfig(workDir)).rejects.toThrow(
+        'env_file must be a single path (string), not an array',
+      );
     });
   });
 });

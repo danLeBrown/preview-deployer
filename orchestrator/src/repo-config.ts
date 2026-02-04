@@ -37,10 +37,10 @@ export const OPTIONAL_REPO_PREVIEW_CONFIG_VALIDATORS = {
     Array.isArray(value) && value.every((v): v is TExtraService => typeof v === 'string'),
   startup_commands: (value: unknown): value is string[] =>
     Array.isArray(value) && value.every((v): v is string => typeof v === 'string'),
-  env_file: (value: unknown): value is string | string[] =>
-    (typeof value === 'string' && value.length > 0) ||
-    (Array.isArray(value) &&
-      value.every((v): v is string => typeof v === 'string' && v.length > 0)),
+  env: (value: unknown): value is string[] =>
+    Array.isArray(value) && value.every((e): e is string => typeof e === 'string'),
+  env_file: (value: unknown): value is string =>
+    typeof value === 'string' && value.length > 0 && !value.includes('\n') && !value.includes('\0'),
 } as const;
 
 export type TOptionalRepoPreviewConfigFields = keyof typeof OPTIONAL_REPO_PREVIEW_CONFIG_VALIDATORS;
@@ -109,12 +109,10 @@ function parseRepoPreviewConfig(raw: unknown): IRepoPreviewConfig {
   if (Array.isArray(obj.env) && obj.env.every((e): e is string => typeof e === 'string')) {
     out.env = obj.env;
   }
+  if (obj.env_file !== undefined && typeof obj.env_file !== 'string') {
+    throw new Error('env_file must be a single path (string), not an array');
+  }
   if (typeof obj.env_file === 'string' && obj.env_file.length > 0) {
-    out.env_file = obj.env_file;
-  } else if (
-    Array.isArray(obj.env_file) &&
-    obj.env_file.every((e): e is string => typeof e === 'string' && e.length > 0)
-  ) {
     out.env_file = obj.env_file;
   }
   if (

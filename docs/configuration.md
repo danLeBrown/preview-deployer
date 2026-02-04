@@ -49,12 +49,14 @@ env:
   - DEBUG=true
   - API_KEY=value
 
-# Optional: Env file(s) relative to repo root (e.g. .env from build_commands). Loaded by Compose at runtime.
+# Optional: Env file path (single string) relative to repo root (e.g. .env from build_commands).
+# Compose loads this file into the app container's process environment at runtime.
 # Use with build_commands: [cp .env.example .env] so the file exists before docker compose up.
 # env_file: .env
-# env_file:
-#   - .env
-#   - .env.preview
+#
+# Multi-line values (e.g. PEM keys): Compose's .env parser is line-based. Use escaped newlines
+# in the value (e.g. PRIVATE_KEY="-----BEGIN RSA-----\n...\n-----END RSA-----") or put the key
+# in a file in the image and reference it via an env var (e.g. KEY_PATH=/app/keys/private.pem).
 
 # Commands run inside the app container before the main process (migrations, seeding, etc.).
 # Runs in order; non-zero exit fails the container. Then the app starts as usual.

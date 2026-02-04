@@ -167,6 +167,7 @@ export class DockerManager {
         const repoComposeContent = await fs.readFile(repoComposePath, 'utf-8');
         const composeObj = parseComposeToObject(repoComposeContent);
         injectPortsIntoRepoCompose(composeObj, repoConfig, portAllocation);
+        applyRepoConfigToAppService(composeObj, repoConfig);
         const generatedPath = getGeneratedComposeFilePath(workDir);
         await fs.writeFile(generatedPath, dumpCompose(composeObj), 'utf-8');
         composeFile = generatedPath;
@@ -262,6 +263,7 @@ export class DockerManager {
           exposedAppPort: deployment.exposedAppPort,
           exposedDbPort: deployment.exposedDbPort,
         });
+        applyRepoConfigToAppService(composeObj, repoConfig);
         const generatedPath = getGeneratedComposeFilePath(workDir);
         await fs.writeFile(generatedPath, dumpCompose(composeObj), 'utf-8');
         composeFile = generatedPath;
