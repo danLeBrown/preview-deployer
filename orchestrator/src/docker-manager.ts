@@ -190,9 +190,13 @@ export class DockerManager {
       });
 
       // Wait for health check
-      const isHealthy = await this.waitForHealthy(appPort, healthCheckPath, 15);
+      const { isHealthy, healthUrl } = await this.waitForHealthy(
+        portAllocation.exposedAppPort,
+        healthCheckPath,
+        15,
+      );
       if (!isHealthy) {
-        throw new Error(`Health check failed for PR #${config.prNumber}`);
+        throw new Error(`Health check at ${healthUrl} failed for PR #${config.prNumber}`);
       }
 
       const url = `${process.env.PREVIEW_BASE_URL || 'http://localhost'}/${config.projectSlug}/pr-${config.prNumber}/`;
@@ -270,9 +274,13 @@ export class DockerManager {
 
       // Wait for health check (use repo preview-config path if present)
       const healthCheckPath = repoConfig.health_check_path;
-      const isHealthy = await this.waitForHealthy(deployment.exposedAppPort, healthCheckPath, 15);
+      const { isHealthy, healthUrl } = await this.waitForHealthy(
+        deployment.exposedAppPort,
+        healthCheckPath,
+        15,
+      );
       if (!isHealthy) {
-        throw new Error(`Health check failed after update: ${deploymentId}`);
+        throw new Error(`Health check at ${healthUrl} failed after update: ${deploymentId}`);
       }
 
       this.logger.info({ deploymentId }, 'Preview updated successfully');
@@ -448,13 +456,17 @@ export class DockerManager {
     await fs.writeFile(composeFile, dumpCompose(composeObj), 'utf-8');
     return composeFile;
   }
+
   private async waitForHealthy(
-    port: number,
+    exposedAppPort: number,
     healthPath: string,
     maxAttempts: number,
-  ): Promise<boolean> {
+  ): Promise<{
+    healthUrl: string;
+    isHealthy: boolean;
+  }> {
     const normalizedPath = healthPath.startsWith('/') ? healthPath : `/${healthPath}`;
-    const healthUrl = `http://localhost:${port}${normalizedPath}`;
+    const healthUrl = `http://localhost:${exposedAppPort}${normalizedPath}`;
     const delay = 5000; // 5 seconds
 
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
@@ -464,13 +476,18 @@ export class DockerManager {
           signal: AbortSignal.timeout(2000),
         });
         if (response.ok) {
-          this.logger.info({ port, attempt }, 'Health check passed');
-          return true;
+          this.logger.info({ exposedAppPort, attempt }, 'Health check passed');
+          return { healthUrl, isHealthy: true };
         }
       } catch (error: unknown) {
         // Ignore errors and retry
         this.logger.debug(
-          { port, attempt, error: error instanceof Error ? error.message : 'Unknown error' },
+          {
+            exposedAppPort,
+            attempt,
+            healthUrl,
+            error: error instanceof Error ? error.message : 'Unknown error',
+          },
           'Health check attempt failed',
         );
       }
@@ -480,7 +497,7 @@ export class DockerManager {
       }
     }
 
-    this.logger.warn({ port, maxAttempts }, 'Health check timeout');
-    return false;
+    this.logger.warn({ exposedAppPort, maxAttempts }, 'Health check timeout');
+    return { healthUrl, isHealthy: false };
   }
 }

@@ -133,7 +133,7 @@ If something goes wrong:
 
    ```bash
    ssh root@YOUR_SERVER_IP
-   journalctl -u preview-deployer-orchestrator -f
+   tail -f /opt/preview-deployer/logs/orchestrator.log
    ```
 
 2. Check Docker containers:

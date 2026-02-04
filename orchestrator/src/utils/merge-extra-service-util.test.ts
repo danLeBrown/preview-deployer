@@ -22,7 +22,7 @@ describe('merge-extra-service-util', () => {
       expect(services.app).toBeDefined();
       const app = services.app as Record<string, unknown>;
       expect((app.environment as string[]).some((e) => e.startsWith('REDIS_URL='))).toBe(true);
-      expect(app.depends_on).toEqual({ redis: { condition: 'service_started' } });
+      expect(app.depends_on).toEqual({ redis: { condition: 'service_healthy' } });
     });
 
     it('should merge postgres: add postgres service, DATABASE_URL, and depends_on', () => {
@@ -33,7 +33,7 @@ describe('merge-extra-service-util', () => {
       expect(services.postgres).toEqual(postgresBlock);
       const app = services.app as Record<string, unknown>;
       expect((app.environment as string[]).some((e) => e.startsWith('DATABASE_URL='))).toBe(true);
-      expect(app.depends_on).toEqual({ postgres: { condition: 'service_started' } });
+      expect(app.depends_on).toEqual({ postgres: { condition: 'service_healthy' } });
     });
 
     it('should merge mysql: add mysql service, DATABASE_URL, and depends_on', () => {
@@ -44,7 +44,7 @@ describe('merge-extra-service-util', () => {
       expect(services.mysql).toEqual(mysqlBlock);
       const app = services.app as Record<string, unknown>;
       expect((app.environment as string[]).some((e) => e.startsWith('DATABASE_URL='))).toBe(true);
-      expect(app.depends_on).toEqual({ mysql: { condition: 'service_started' } });
+      expect(app.depends_on).toEqual({ mysql: { condition: 'service_healthy' } });
     });
 
     it('should merge mongodb: add mongodb service, DATABASE_URL, and depends_on', () => {
@@ -55,7 +55,7 @@ describe('merge-extra-service-util', () => {
       expect(services.mongodb).toEqual(mongodbBlock);
       const app = services.app as Record<string, unknown>;
       expect((app.environment as string[]).some((e) => e.startsWith('DATABASE_URL='))).toBe(true);
-      expect(app.depends_on).toEqual({ mongodb: { condition: 'service_started' } });
+      expect(app.depends_on).toEqual({ mongodb: { condition: 'service_healthy' } });
     });
 
     it('should throw for unknown extra service', () => {

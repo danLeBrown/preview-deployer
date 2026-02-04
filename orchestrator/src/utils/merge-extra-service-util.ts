@@ -17,7 +17,7 @@ function mergeRedisService(
     // update the redis url
     app.environment = env.map((e) => (e.startsWith('REDIS_URL=') ? `REDIS_URL=${redisUrl}` : e));
   }
-  app.depends_on = { redis: { condition: 'service_started' } };
+  app.depends_on = { redis: { condition: 'service_healthy' } };
 }
 
 function mergePostgresService(
@@ -40,7 +40,7 @@ function mergePostgresService(
   }
 
   (services as Record<string, unknown>).postgres = extraServiceBlock;
-  app.depends_on = { postgres: { condition: 'service_started' } };
+  app.depends_on = { postgres: { condition: 'service_healthy' } };
 }
 
 function mergeMysqlService(
@@ -64,7 +64,7 @@ function mergeMysqlService(
   }
 
   (services as Record<string, unknown>).mysql = extraServiceBlock;
-  app.depends_on = { mysql: { condition: 'service_started' } };
+  app.depends_on = { mysql: { condition: 'service_healthy' } };
 }
 
 function mergeMongodbService(
@@ -88,7 +88,7 @@ function mergeMongodbService(
   }
 
   (services as Record<string, unknown>).mongodb = extraServiceBlock;
-  app.depends_on = { mongodb: { condition: 'service_started' } };
+  app.depends_on = { mongodb: { condition: 'service_healthy' } };
 }
 
 export function mergeExtraService(

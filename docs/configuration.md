@@ -186,6 +186,7 @@ server_ip: 1.2.3.4
 preview_base_url: http://1.2.3.4
 cleanup_ttl_days: 7
 max_concurrent_previews: 10
+orchestrator_log_level: info # optional; options: debug, info, warn, error
 ```
 
 ### Optional SSL (Let's Encrypt)
@@ -370,11 +371,15 @@ Location: `/opt/preview-deployer/logs/`
 - `orchestrator.log`: Application logs
 - `orchestrator-error.log`: Error logs
 
+At `debug` log level, debug and higher are written to the same orchestrator log file.
+
 View logs:
 
 ```bash
 ssh root@YOUR_SERVER_IP
-journalctl -u preview-deployer-orchestrator -f
+tail -f /opt/preview-deployer/logs/orchestrator.log
+# Errors:
+tail -f /opt/preview-deployer/logs/orchestrator-error.log
 ```
 
 ### Docker Logs

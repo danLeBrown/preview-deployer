@@ -119,5 +119,4 @@ curl http://<server_ip>:3000/health
 
 - If SSH connection fails, ensure your SSH key is added to the droplet
 - If nginx fails to start, check configuration: `nginx -t`
-- If orchestrator fails, check logs: `journalctl -u preview-deployer-orchestrator -f`
-- Check orchestrator logs: `/opt/preview-deployer/logs/orchestrator.log`
+- If orchestrator fails, check logs: `tail -f /opt/preview-deployer/logs/orchestrator.log` (errors: `tail -f /opt/preview-deployer/logs/orchestrator-error.log`)

@@ -42,7 +42,7 @@ Common issues and solutions for preview-deployer.
 
 - Check environment variables are set correctly
 - Verify Node.js is installed: `node --version`
-- Check orchestrator logs: `journalctl -u preview-deployer-orchestrator -f`
+- Check orchestrator logs: `tail -f /opt/preview-deployer/logs/orchestrator.log` (errors: `tail -f /opt/preview-deployer/logs/orchestrator-error.log`)
 
 ## Deployment Issues
 
@@ -68,7 +68,7 @@ Common issues and solutions for preview-deployer.
 
    ```bash
    ssh root@SERVER_IP
-   journalctl -u preview-deployer-orchestrator -f
+   tail -f /opt/preview-deployer/logs/orchestrator.log
    ```
 
 4. Test webhook manually:
@@ -282,7 +282,7 @@ Common issues and solutions for preview-deployer.
 
    ```bash
    ssh root@SERVER_IP
-   journalctl -u preview-deployer-orchestrator | grep cleanup
+   grep cleanup /opt/preview-deployer/logs/orchestrator.log
    ```
 
 2. Verify TTL configuration:
@@ -366,7 +366,13 @@ Common issues and solutions for preview-deployer.
 
 ### Enable Debug Logging
 
-Set `LOG_LEVEL=debug` in orchestrator environment:
+Set `LOG_LEVEL=debug` in orchestrator environment (e.g. via `systemctl edit` or Ansible variable `orchestrator_log_level`). Debug lines then appear in the same file as info logs: `/opt/preview-deployer/logs/orchestrator.log`. View them with:
+
+```bash
+tail -f /opt/preview-deployer/logs/orchestrator.log
+```
+
+To set via systemd override:
 
 ```bash
 ssh root@SERVER_IP
@@ -391,7 +397,7 @@ nginx -t
 
 # Orchestrator
 systemctl status preview-deployer-orchestrator
-journalctl -u preview-deployer-orchestrator -n 50
+tail -n 50 /opt/preview-deployer/logs/orchestrator.log
 ```
 
 ### Manual Testing

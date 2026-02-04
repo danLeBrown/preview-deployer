@@ -37,6 +37,10 @@ export const OPTIONAL_REPO_PREVIEW_CONFIG_VALIDATORS = {
     Array.isArray(value) && value.every((v): v is TExtraService => typeof v === 'string'),
   startup_commands: (value: unknown): value is string[] =>
     Array.isArray(value) && value.every((v): v is string => typeof v === 'string'),
+  env_file: (value: unknown): value is string | string[] =>
+    (typeof value === 'string' && value.length > 0) ||
+    (Array.isArray(value) &&
+      value.every((v): v is string => typeof v === 'string' && v.length > 0)),
 } as const;
 
 export type TOptionalRepoPreviewConfigFields = keyof typeof OPTIONAL_REPO_PREVIEW_CONFIG_VALIDATORS;
