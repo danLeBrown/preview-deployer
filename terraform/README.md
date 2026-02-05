@@ -1,6 +1,6 @@
 # Terraform Configuration
 
-This directory contains Terraform configuration files for provisioning the Digital Ocean infrastructure required for preview-deployer.
+This directory contains Terraform configuration files for provisioning the Digital Ocean infrastructure required for Prvue.
 
 ## Prerequisites
 
@@ -85,6 +85,7 @@ After applying, Terraform will output:
 - Monitoring: Free
 
 To reduce costs, you can:
+
 - Use a smaller droplet size (e.g., `s-1vcpu-2gb`)
 - Disable backups (already disabled by default)
 - Use a cheaper region

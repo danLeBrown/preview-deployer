@@ -5,7 +5,7 @@ import { ConfigManager } from '../utils/config';
 import { TerraformWrapper } from '../utils/terraform';
 
 export async function statusCommand(): Promise<void> {
-  console.log(chalk.blue('Checking preview-deployer status...\n'));
+  console.log(chalk.blue('Checking Prvue status...\n'));
 
   const config = await ConfigManager.loadConfig();
   if (!config) {

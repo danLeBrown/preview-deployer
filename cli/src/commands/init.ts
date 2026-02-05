@@ -23,7 +23,7 @@ interface InquirerAnswers {
 }
 
 export async function initCommand(): Promise<void> {
-  console.log(chalk.blue('Initializing preview-deployer configuration...\n'));
+  console.log(chalk.blue('Initializing Prvue configuration...\n'));
 
   const answersBeforeRepos = await inquirer.prompt<
     Pick<InquirerAnswers, 'doToken' | 'region' | 'dropletSize' | 'githubToken'>

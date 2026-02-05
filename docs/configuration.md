@@ -1,6 +1,6 @@
 # Configuration Reference
 
-Complete reference for all configuration options in preview-deployer.
+Complete reference for all configuration options in Prvue.
 
 ## Repository Configuration (`preview-config.yml`)
 

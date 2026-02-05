@@ -52,5 +52,5 @@
 
     - name: Restart orchestrator service
       ansible.builtin.systemd:
-        name: preview-deployer-orchestrator
+        name: preview-orchestrator
         state: restarted

@@ -1,17 +1,21 @@
-# Preview Deployer
+# Prvue
 
-Automated preview deployment system for backend applications (NestJS and Go) that creates isolated preview environments on Digital Ocean when GitHub PRs are opened, similar to how Vercel/Netlify work for frontend apps.
+Automated preview deployment system for backend applications (NestJS, Go, Laravel, Rust, Python) that creates isolated preview environments on Digital Ocean when GitHub PRs are opened, similar to how Vercel/Netlify work for frontend apps.
 
 ## Features
 
 - 🚀 **Automatic Preview Environments**: Creates isolated Docker containers for each PR
-- 🗄️ **Database Isolation**: Each preview gets its own database instance
+- 🗄️ **Database Isolation**: Each preview gets its own database instance (PostgreSQL, MySQL, or MongoDB)
 - 🔄 **Auto Updates**: Preview environments rebuild automatically on PR updates
 - 🧹 **Auto Cleanup**: Removes preview environments when PRs are closed or after TTL expires
 - 🌐 **Nginx Routing**: Path-based routing (`/{projectSlug}/pr-{number}/`) to preview environments (project slug from repo owner/name avoids collisions across repos)
 - 📦 **Infrastructure as Code**: Terraform for provisioning, Ansible for configuration
 - 🛠️ **CLI Tool**: Simple command-line interface for setup and management
 - 🔒 **Secure**: Webhook signature verification, repository whitelisting, input sanitization
+- **Frameworks**: NestJS, Go, Laravel, Rust, Python (templates and/or auto-detection)
+- **Extra services**: e.g. Redis via repo `preview-config.yml` (`extra_services`)
+- **Repo-owned Compose**: Optional `docker-compose.preview.yml` in repo root; build_commands, startup_commands, env injection, custom Dockerfile path
+- **API**: OpenAPI/Swagger for the orchestrator
 
 ## Architecture
 
@@ -49,10 +53,14 @@ preview setup
 # Create a PR in your repository to trigger a preview deployment
 ```
 
+## Project name and paths
+
+The product is **Prvue**. Install and config paths intentionally stay **preview-deployer** (e.g. `/opt/preview-deployer`, `~/.preview-deployer`) so operators have a consistent, easy-to-type name for logs and debugging. The systemd service is named **preview-orchestrator**.
+
 ## Project Structure
 
 ```
-preview-deployer/
+prvue/
 ├── terraform/          # Infrastructure as Code
 ├── ansible/            # Server configuration
 ├── orchestrator/       # Core deployment service
@@ -64,20 +72,18 @@ preview-deployer/
 
 ## Supported Frameworks
 
-- **NestJS** (primary)
-- **Go** (secondary)
+- **NestJS**, **Go**, **Laravel**, **Rust**, **Python**
 
 ## Supported Databases
 
-- **PostgreSQL** (primary)
-- Architecture supports MySQL/MongoDB (future)
+- **PostgreSQL**, **MySQL**, **MongoDB**
 
 ## Testing
 
 ```bash
-pnpm --filter @preview-deployer/orchestrator run test:unit   # unit only
-pnpm --filter @preview-deployer/orchestrator run test:all    # unit + integration
-pnpm --filter @preview-deployer/orchestrator run test:e2e    # E2E API tier (optional full tier with E2E_FULL=1)
+pnpm --filter @prvue/orchestrator run test:unit   # unit only
+pnpm --filter @prvue/orchestrator run test:all    # unit + integration
+pnpm --filter @prvue/orchestrator run test:e2e    # E2E API tier (optional full tier with E2E_FULL=1)
 ```
 
 See [Testing](https://docs.prvue.dev/testing) for integration, E2E, coverage, and env vars.

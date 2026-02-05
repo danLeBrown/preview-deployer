@@ -1,6 +1,6 @@
-# Preview Deployer CLI
+# Prvue CLI
 
-Command-line interface for managing preview-deployer infrastructure and deployments.
+Command-line interface for managing Prvue infrastructure and deployments.
 
 ## Installation
 
@@ -13,7 +13,7 @@ pnpm build
 
 ### init
 
-Initialize preview-deployer configuration.
+Initialize Prvue configuration.
 
 ```bash
 preview init

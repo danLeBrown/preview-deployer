@@ -13,12 +13,12 @@ const program = new Command();
 
 program
   .name('preview')
-  .description('Preview Deployer CLI - Automated preview deployment system')
+  .description('Prvue CLI - Automated preview deployment system')
   .version('0.1.0');
 
 program
   .command('init')
-  .description('Initialize preview-deployer configuration')
+  .description('Initialize Prvue configuration')
   .action(async () => {
     try {
       await initCommand();

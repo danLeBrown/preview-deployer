@@ -1,6 +1,6 @@
 # Ansible Configuration
 
-This directory contains Ansible playbooks and roles for configuring the preview-deployer server.
+This directory contains Ansible playbooks and roles for configuring the Prvue server.
 
 ## Prerequisites
 
@@ -111,7 +111,7 @@ ssh root@<server_ip> docker --version
 ssh root@<server_ip> systemctl status nginx
 
 # Check orchestrator
-ssh root@<server_ip> systemctl status preview-deployer-orchestrator
+ssh root@<server_ip> systemctl status preview-orchestrator
 curl http://<server_ip>:3000/health
 ```
 

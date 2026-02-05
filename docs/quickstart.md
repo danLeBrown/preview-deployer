@@ -1,6 +1,6 @@
 # Quickstart Guide
 
-Get preview-deployer up and running in minutes.
+Get Prvue up and running in minutes.
 
 ## Prerequisites
 
@@ -14,13 +14,13 @@ Before you begin, ensure you have:
 6. **Ansible**: Version 2.14 or higher ([install](https://docs.ansible.com/ansible/latest/installation_guide/index.html))
 7. **SSH Key**: For accessing the Digital Ocean droplet
 
-## Step 1: Install preview-deployer
+## Step 1: Install Prvue
 
 Clone the repository and install dependencies:
 
 ```bash
-git clone https://github.com/danLeBrown/preview-deployer.git
-cd preview-deployer
+git clone https://github.com/danLeBrown/prvue.git
+cd prvue
 pnpm install
 pnpm build
 ```

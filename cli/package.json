@@ -1,7 +1,7 @@
 {
-  "name": "@preview-deployer/cli",
+  "name": "@prvue/cli",
   "version": "0.1.0",
-  "description": "CLI tool for preview-deployer",
+  "description": "CLI tool for Prvue",
   "bin": {
     "preview": "./dist/index.js"
   },

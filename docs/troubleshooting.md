@@ -1,6 +1,6 @@
 # Troubleshooting Guide
 
-Common issues and solutions for preview-deployer.
+Common issues and solutions for Prvue.
 
 ## Setup Issues
 
@@ -376,10 +376,10 @@ To set via systemd override:
 
 ```bash
 ssh root@SERVER_IP
-systemctl edit preview-deployer-orchestrator
+systemctl edit preview-orchestrator
 # Add: Environment="LOG_LEVEL=debug"
 systemctl daemon-reload
-systemctl restart preview-deployer-orchestrator
+systemctl restart preview-orchestrator
 ```
 
 ### Check All Services
@@ -396,7 +396,7 @@ systemctl status nginx
 nginx -t
 
 # Orchestrator
-systemctl status preview-deployer-orchestrator
+systemctl status preview-orchestrator
 tail -n 50 /opt/preview-deployer/logs/orchestrator.log
 ```
 

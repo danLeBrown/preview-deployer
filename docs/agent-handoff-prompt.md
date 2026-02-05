@@ -7,7 +7,9 @@ Copy the block below into a new Cursor agent (or chat) session so the agent uses
 **Prompt to paste:**
 
 ```
-You are working on the preview-deployer project. Before implementing any new features or changes:
+You are working on the prvue project. Before implementing any new features or changes:
+
+Install/config paths (e.g. `/opt/preview-deployer`, `~/.preview-deployer`) stay as preview-deployer for operator convenience; systemd service is `preview-orchestrator`.
 
 1. Read these project artifacts in order:
    - README.md (project overview, structure, quick start)

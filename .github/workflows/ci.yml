@@ -35,10 +35,10 @@ jobs:
         run: pnpm run build
 
       - name: Unit tests
-        run: pnpm --filter @preview-deployer/orchestrator run test:unit
+        run: pnpm --filter @prvue/orchestrator run test:unit
 
       - name: Integration tests
-        run: pnpm --filter @preview-deployer/orchestrator run test:integration
+        run: pnpm --filter @prvue/orchestrator run test:integration
 
       - name: E2E tests
-        run: pnpm --filter @preview-deployer/orchestrator run test:e2e
+        run: pnpm --filter @prvue/orchestrator run test:e2e

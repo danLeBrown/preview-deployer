@@ -10,7 +10,7 @@ import { GitHubWebhookManager } from '../utils/github';
 import { TerraformWrapper } from '../utils/terraform';
 
 export async function setupCommand(): Promise<void> {
-  console.log(chalk.blue('Setting up preview-deployer infrastructure...\n'));
+  console.log(chalk.blue('Setting up Prvue infrastructure...\n'));
 
   const config = await ConfigManager.loadConfig();
   if (!config) {

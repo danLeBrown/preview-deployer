@@ -5,5 +5,5 @@
 
 - name: restart orchestrator
   systemd:
-    name: preview-deployer-orchestrator
+    name: preview-orchestrator
     state: restarted

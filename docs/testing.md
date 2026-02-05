@@ -17,22 +17,22 @@ From the repo root:
 
 ```bash
 # Orchestrator unit tests (default)
-pnpm --filter @preview-deployer/orchestrator run test:unit
+pnpm --filter @prvue/orchestrator run test:unit
 
 # Unit + integration (no extra env; integration uses temp dirs, no nginx binary)
-pnpm --filter @preview-deployer/orchestrator run test:all
+pnpm --filter @prvue/orchestrator run test:all
 
 # Integration only (Docker must be running for DockerManager tests)
-pnpm --filter @preview-deployer/orchestrator run test:integration
+pnpm --filter @prvue/orchestrator run test:integration
 
 # E2E API tier (no GitHub/Docker; mocked services)
-pnpm --filter @preview-deployer/orchestrator run test:e2e
+pnpm --filter @prvue/orchestrator run test:e2e
 
 # With coverage
-pnpm --filter @preview-deployer/orchestrator run test:coverage
+pnpm --filter @prvue/orchestrator run test:coverage
 
 # Watch mode
-pnpm --filter @preview-deployer/orchestrator run test:watch
+pnpm --filter @prvue/orchestrator run test:watch
 ```
 
 From `orchestrator/`:
@@ -104,7 +104,7 @@ E2E tests load env from **`orchestrator/.env.test`** (via `tests/setup-env.ts`),
 To run full E2E (real deploy and cleanup):
 
 ```bash
-E2E_FULL=1 pnpm --filter @preview-deployer/orchestrator run test:e2e
+E2E_FULL=1 pnpm --filter @prvue/orchestrator run test:e2e
 ```
 
 In `.env.test` set `GITHUB_TOKEN`, `GITHUB_WEBHOOK_SECRET`, `ALLOWED_REPOS` (e.g. `owner/repo`), and `PREVIEW_BASE_URL`. The test repo should have branch `main`, a Dockerfile, and a health endpoint (e.g. `/health`).

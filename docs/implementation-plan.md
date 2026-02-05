@@ -1,4 +1,4 @@
-# Preview Deployer System - Implementation Plan
+# Prvue – Implementation Plan
 
 This is the canonical implementation plan for the project. It is synced from the Cursor plan and committed so all contributors and agents use the same reference.
 
@@ -21,7 +21,7 @@ GitHub Webhook → Orchestrator API → Docker Containers → Nginx Reverse Prox
 ## Project Structure
 
 ```
-preview-deployer/
+prvue/
 ├── terraform/          # Infrastructure as Code
 ├── ansible/            # Server configuration
 ├── orchestrator/       # Core deployment service

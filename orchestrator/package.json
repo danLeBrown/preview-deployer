@@ -1,5 +1,5 @@
 {
-  "name": "@preview-deployer/orchestrator",
+  "name": "@prvue/orchestrator",
   "version": "0.1.0",
   "description": "Core orchestrator service for preview deployments",
   "main": "dist/index.js",

@@ -2,7 +2,7 @@
 
 ## System Overview
 
-Preview-deployer is a multi-component system that automatically creates isolated preview environments for backend applications when GitHub PRs are opened.
+Prvue is a multi-component system that automatically creates isolated preview environments for backend applications when GitHub PRs are opened.
 
 ## Architecture Diagram
 
