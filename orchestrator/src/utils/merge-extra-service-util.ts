@@ -23,11 +23,12 @@ function mergeRedisService(
 function mergePostgresService(
   composeObj: Record<string, unknown>,
   extraServiceBlock: Record<string, unknown>,
+  prNumber: number,
 ): void {
   const services = (composeObj.services ?? {}) as Record<string, unknown>;
   const app = (services.app ?? {}) as Record<string, unknown>;
 
-  const databaseUrl = `postgresql://preview:preview@postgres:5432/pr_{{prNumber}}`;
+  const databaseUrl = `postgresql://preview:preview@postgres:5432/pr_${prNumber}`;
   // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
   const env = (app.environment as string[]) ?? [];
   if (!env.some((e) => e.startsWith('DATABASE_URL='))) {
@@ -46,11 +47,12 @@ function mergePostgresService(
 function mergeMysqlService(
   composeObj: Record<string, unknown>,
   extraServiceBlock: Record<string, unknown>,
+  prNumber: number,
 ): void {
   const services = (composeObj.services ?? {}) as Record<string, unknown>;
   const app = (services.app ?? {}) as Record<string, unknown>;
 
-  const databaseUrl = `mysql://preview:preview@mysql:3306/pr_{{prNumber}}`;
+  const databaseUrl = `mysql://preview:preview@mysql:3306/pr_${prNumber}`;
   // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
   const env = (app.environment as string[]) ?? [];
 
@@ -70,11 +72,12 @@ function mergeMysqlService(
 function mergeMongodbService(
   composeObj: Record<string, unknown>,
   extraServiceBlock: Record<string, unknown>,
+  prNumber: number,
 ): void {
   const services = (composeObj.services ?? {}) as Record<string, unknown>;
   const app = (services.app ?? {}) as Record<string, unknown>;
 
-  const databaseUrl = `mongodb://preview:preview@mongodb:27017/pr_{{prNumber}}`;
+  const databaseUrl = `mongodb://preview:preview@mongodb:27017/pr_${prNumber}`;
   // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
   const env = (app.environment as string[]) ?? [];
 
@@ -95,19 +98,20 @@ export function mergeExtraService(
   composeObj: Record<string, unknown>,
   extraService: TExtraService,
   extraServiceBlock: Record<string, unknown>,
+  prNumber: number,
 ): void {
   switch (extraService) {
     case 'redis':
       mergeRedisService(composeObj, extraServiceBlock);
       break;
     case 'postgres':
-      mergePostgresService(composeObj, extraServiceBlock);
+      mergePostgresService(composeObj, extraServiceBlock, prNumber);
       break;
     case 'mysql':
-      mergeMysqlService(composeObj, extraServiceBlock);
+      mergeMysqlService(composeObj, extraServiceBlock, prNumber);
       break;
     case 'mongodb':
-      mergeMongodbService(composeObj, extraServiceBlock);
+      mergeMongodbService(composeObj, extraServiceBlock, prNumber);
       break;
     default:
       throw new Error(`Unknown extra service: ${extraService}`);

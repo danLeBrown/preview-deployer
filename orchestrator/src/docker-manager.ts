@@ -94,7 +94,7 @@ export class DockerManager {
   }> {
     const workDir = path.join(this.deploymentsDir, config.projectSlug, `pr-${config.prNumber}`);
     const boundPorts = await this.getDockerBoundHostPorts();
-    const portAllocation = this.tracker.allocatePorts(config.deploymentId, {
+    const { exposedAppPort, exposedDbPort } = this.tracker.allocatePorts(config.deploymentId, {
       excludePorts: boundPorts,
     });
 
@@ -166,7 +166,10 @@ export class DockerManager {
         const repoComposePath = getComposeFilePath(workDir);
         const repoComposeContent = await fs.readFile(repoComposePath, 'utf-8');
         const composeObj = parseComposeToObject(repoComposeContent);
-        injectPortsIntoRepoCompose(composeObj, repoConfig, portAllocation);
+        injectPortsIntoRepoCompose(composeObj, repoConfig, {
+          exposedAppPort,
+          exposedDbPort,
+        });
         applyRepoConfigToAppService(composeObj, repoConfig);
         const generatedPath = getGeneratedComposeFilePath(workDir);
         await fs.writeFile(generatedPath, dumpCompose(composeObj), 'utf-8');
@@ -176,7 +179,10 @@ export class DockerManager {
           config.projectSlug,
           config.prNumber,
           repoConfig,
-          portAllocation,
+          {
+            exposedAppPort,
+            exposedDbPort,
+          },
           repoConfig.extra_services ?? [],
           workDir,
         );
@@ -190,9 +196,13 @@ export class DockerManager {
         cwd: workDir,
       });
 
-      // Wait for health check
+      this.logger.info(
+        { deploymentId: config.deploymentId, useRepoCompose },
+        'Done building containers. Starting health check.',
+      );
+
       const { isHealthy, healthUrl } = await this.waitForHealthy(
-        portAllocation.exposedAppPort,
+        exposedAppPort,
         healthCheckPath,
         15,
       );
@@ -206,8 +216,8 @@ export class DockerManager {
       return {
         url,
         appPort,
-        exposedAppPort: portAllocation.exposedAppPort,
-        exposedDbPort: portAllocation.exposedDbPort,
+        exposedAppPort,
+        exposedDbPort,
         framework,
         dbType,
       };
@@ -270,9 +280,17 @@ export class DockerManager {
       } else {
         composeFile = getComposeFilePath(workDir);
       }
+
+      this.logger.info({ deploymentId, useRepoCompose }, 'Building containers');
+
       await execAsync(`docker compose -p ${deploymentId} -f ${composeFile} up -d --build`, {
         cwd: workDir,
       });
+
+      this.logger.info(
+        { deploymentId, useRepoCompose },
+        'Done building containers. Starting health check.',
+      );
 
       // Wait for health check (use repo preview-config path if present)
       const healthCheckPath = repoConfig.health_check_path;
@@ -448,7 +466,7 @@ export class DockerManager {
           exposedDbPort: portAllocation.exposedDbPort,
         });
 
-        mergeExtraService(composeObj, service, block);
+        mergeExtraService(composeObj, service, block, prNumber);
       }),
     );
 
