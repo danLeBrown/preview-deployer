@@ -16,7 +16,7 @@ describe('merge-extra-service-util', () => {
     it('should merge redis: add redis service, REDIS_URL, and depends_on', () => {
       const composeObj = baseCompose();
       const redisBlock = { image: 'redis:7', ports: ['6379:6379'] };
-      mergeExtraService(composeObj, 'redis', redisBlock);
+      mergeExtraService(composeObj, 'redis', redisBlock, 1);
       const services = composeObj.services as Record<string, unknown>;
       expect(services.redis).toEqual(redisBlock);
       expect(services.app).toBeDefined();
@@ -28,7 +28,7 @@ describe('merge-extra-service-util', () => {
     it('should merge postgres: add postgres service, DATABASE_URL, and depends_on', () => {
       const composeObj = baseCompose();
       const postgresBlock = { image: 'postgres:16' };
-      mergeExtraService(composeObj, 'postgres', postgresBlock);
+      mergeExtraService(composeObj, 'postgres', postgresBlock, 1);
       const services = composeObj.services as Record<string, unknown>;
       expect(services.postgres).toEqual(postgresBlock);
       const app = services.app as Record<string, unknown>;
@@ -39,7 +39,7 @@ describe('merge-extra-service-util', () => {
     it('should merge mysql: add mysql service, DATABASE_URL, and depends_on', () => {
       const composeObj = baseCompose();
       const mysqlBlock = { image: 'mysql:8' };
-      mergeExtraService(composeObj, 'mysql', mysqlBlock);
+      mergeExtraService(composeObj, 'mysql', mysqlBlock, 1);
       const services = composeObj.services as Record<string, unknown>;
       expect(services.mysql).toEqual(mysqlBlock);
       const app = services.app as Record<string, unknown>;
@@ -50,7 +50,7 @@ describe('merge-extra-service-util', () => {
     it('should merge mongodb: add mongodb service, DATABASE_URL, and depends_on', () => {
       const composeObj = baseCompose();
       const mongodbBlock = { image: 'mongo:7' };
-      mergeExtraService(composeObj, 'mongodb', mongodbBlock);
+      mergeExtraService(composeObj, 'mongodb', mongodbBlock, 1);
       const services = composeObj.services as Record<string, unknown>;
       expect(services.mongodb).toEqual(mongodbBlock);
       const app = services.app as Record<string, unknown>;
@@ -60,7 +60,7 @@ describe('merge-extra-service-util', () => {
 
     it('should throw for unknown extra service', () => {
       const composeObj = baseCompose();
-      expect(() => mergeExtraService(composeObj, 'unknown' as 'redis', { image: 'x' })).toThrow(
+      expect(() => mergeExtraService(composeObj, 'unknown' as 'redis', { image: 'x' }, 1)).toThrow(
         'Unknown extra service: unknown',
       );
     });
@@ -70,7 +70,7 @@ describe('merge-extra-service-util', () => {
       (composeObj.services as Record<string, unknown>).app = {
         environment: ['REDIS_URL=redis://old:6379'],
       };
-      mergeExtraService(composeObj, 'redis', { image: 'redis:7' });
+      mergeExtraService(composeObj, 'redis', { image: 'redis:7' }, 1);
       const app = (composeObj.services as Record<string, unknown>).app as Record<string, unknown>;
       expect((app.environment as string[]).find((e) => e.startsWith('REDIS_URL='))).toBe(
         'REDIS_URL=redis://redis:6379',
