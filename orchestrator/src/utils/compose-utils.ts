@@ -32,6 +32,8 @@ export interface IComposeTemplateData {
   appPort: number;
   appPortEnv: string;
   dbType: TDatabaseType;
+  /** Optional env file path from preview-config env_file (e.g. .env). */
+  envFile?: string;
 }
 
 /** Returns true if the repo has docker-compose.preview.yml or docker-compose.preview.yaml in workDir (exact names only). */

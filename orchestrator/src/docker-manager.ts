@@ -447,10 +447,12 @@ export class DockerManager {
     const composeContent = renderComposeTemplate(templateContent, {
       projectSlug,
       prNumber,
-      appPort: portAllocation.exposedAppPort,
-      dbPort: portAllocation.exposedDbPort,
+      exposedAppPort: portAllocation.exposedAppPort,
+      exposedDbPort: portAllocation.exposedDbPort,
+      appPort: repoConfig.app_port,
       appPortEnv: repoConfig.app_port_env,
       dbType: repoConfig.database,
+      envFile: repoConfig.env_file,
     });
     const composeObj = parseComposeToObject(composeContent);
 

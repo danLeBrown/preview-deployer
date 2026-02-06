@@ -9,6 +9,10 @@ services:
     environment:
       - NODE_ENV=preview
       - PORT={{appPort}}
+    {{#if envFile}}
+    env_file:
+      - {{envFile}}
+    {{/if}}
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:{{appPort}}/health"]

@@ -33,6 +33,23 @@ describe('compose-utils', () => {
       const result = renderComposeTemplate(template, {});
       expect(result).toBe('x: ');
     });
+
+    it('should include env_file block when envFile is set', () => {
+      const template =
+        'environment:\n  - PORT={{appPort}}\n{{#if envFile}}\nenv_file:\n  - {{envFile}}\n{{/if}}\nrestart: unless-stopped';
+      const result = renderComposeTemplate(template, { appPort: 3000, envFile: '.env' });
+      expect(result).toContain('env_file:');
+      expect(result).toContain('- .env');
+      expect(result).toContain('restart: unless-stopped');
+    });
+
+    it('should omit env_file block when envFile is not set', () => {
+      const template =
+        'environment:\n  - PORT={{appPort}}\n{{#if envFile}}\nenv_file:\n  - {{envFile}}\n{{/if}}\nrestart: unless-stopped';
+      const result = renderComposeTemplate(template, { appPort: 3000 });
+      expect(result).not.toContain('env_file:');
+      expect(result).toContain('restart: unless-stopped');
+    });
   });
 
   describe('parseComposeToObject', () => {

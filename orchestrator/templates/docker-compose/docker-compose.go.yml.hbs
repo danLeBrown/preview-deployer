@@ -8,6 +8,10 @@ services:
       - "{{exposedAppPort}}:{{appPort}}"
     environment:
       - {{appPortEnv}}={{appPort}}
+    {{#if envFile}}
+    env_file:
+      - {{envFile}}
+    {{/if}}
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:{{appPort}}/health"]
