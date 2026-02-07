@@ -1,5 +1,5 @@
 import chalk from 'chalk';
-import * as os from 'os';
+import * as dotenv from 'dotenv';
 import * as path from 'path';
 
 import { AnsibleWrapper } from '../utils/ansible';
@@ -8,6 +8,9 @@ import { TerraformWrapper } from '../utils/terraform';
 
 export async function syncCommand(): Promise<void> {
   console.log(chalk.blue('Syncing orchestrator code to server...\n'));
+
+  const envPath = process.env.PREVIEW_ENV_PATH ?? path.resolve(__dirname, '..', '..', '.env');
+  dotenv.config({ path: envPath });
 
   const config = await ConfigManager.loadConfig();
   if (!config) {
@@ -28,8 +31,12 @@ export async function syncCommand(): Promise<void> {
     }
 
     const serverIp = outputs.server_ip.value;
-    const sshKeyPath =
-      process.env.PREVIEW_SSH_KEY ?? path.join(os.homedir(), '.ssh', 'digital_ocean_ed25519');
+    const sshKeyPath = process.env.PREVIEW_SSH_KEY_PATH;
+
+    if (!sshKeyPath) {
+      console.error(chalk.red('SSH key path not found. Run "preview setup" first.'));
+      process.exit(1);
+    }
 
     console.log(chalk.blue(`Server: ${serverIp}`));
     console.log(chalk.blue(`SSH key: ${sshKeyPath}\n`));

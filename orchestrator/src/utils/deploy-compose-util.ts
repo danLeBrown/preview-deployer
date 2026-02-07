@@ -3,7 +3,7 @@ import * as fs from 'fs/promises';
 import { IValidatedRepoPreviewConfig } from '../repo-config';
 import { IPortAllocation } from '../types/deployment';
 import {
-  applyRepoConfigToAppService,
+  applyEnvAndStartupCommandsToAppService,
   dumpCompose,
   ensurePreviewComposeExtension,
   getComposeFilePath,
@@ -41,7 +41,7 @@ export async function resolveAndWriteComposeFile(
     const repoComposeContent = await fs.readFile(repoComposePath, 'utf-8');
     const composeObj = parseComposeToObject(repoComposeContent);
     injectPortsIntoRepoCompose(composeObj, repoConfig, portAllocation);
-    applyRepoConfigToAppService(composeObj, repoConfig);
+    applyEnvAndStartupCommandsToAppService(composeObj, repoConfig);
     const generatedPath = getGeneratedComposeFilePath(workDir);
     await fs.writeFile(generatedPath, dumpCompose(composeObj), 'utf-8');
     return { composeFile: generatedPath, useRepoCompose: true };

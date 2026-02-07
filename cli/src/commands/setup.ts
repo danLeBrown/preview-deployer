@@ -154,6 +154,8 @@ export async function setupCommand(): Promise<void> {
       await github.createWebhook(owner, repoName, webhookUrl, config.github.webhook_secret);
     }
 
+    createEnvAndStorePathToPreviewKey(sshPrivateKeyPath);
+
     // Summary
     console.log(chalk.green('\n✅ Setup complete!\n'));
     console.log(chalk.blue('Summary:'));
@@ -171,4 +173,13 @@ export async function setupCommand(): Promise<void> {
     );
     process.exit(1);
   }
+}
+
+function createEnvAndStorePathToPreviewKey(sshPrivateKeyPath: string): void {
+  const envPath = path.join(__dirname, '..', '..', '.env');
+  if (fs.existsSync(envPath)) {
+    fs.rmSync(envPath);
+  }
+  fs.writeFileSync(envPath, `PREVIEW_SSH_KEY_PATH=${sshPrivateKeyPath}\n`);
+  console.log(chalk.green(`\nPreview SSH key stored in ${envPath}`));
 }

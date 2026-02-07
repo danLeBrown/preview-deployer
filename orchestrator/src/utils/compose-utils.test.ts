@@ -1,6 +1,6 @@
 import type { IValidatedRepoPreviewConfig } from '../repo-config';
 import {
-  applyRepoConfigToAppService,
+  applyEnvAndStartupCommandsToAppService,
   dumpCompose,
   getDefaultCommandForFramework,
   injectPortsIntoRepoCompose,
@@ -143,7 +143,7 @@ describe('compose-utils', () => {
     });
   });
 
-  describe('applyRepoConfigToAppService', () => {
+  describe('applyEnvAndStartupCommandsToAppService', () => {
     it('should set entrypoint and command when startup_commands present', () => {
       const composeObj: Record<string, unknown> = {
         services: { app: { image: 'app' } },
@@ -152,7 +152,7 @@ describe('compose-utils', () => {
         ...minimalValidConfig,
         startup_commands: ['npm run migration:run', 'npm run seed'],
       };
-      applyRepoConfigToAppService(composeObj, config);
+      applyEnvAndStartupCommandsToAppService(composeObj, config);
       const app = (composeObj.services as Record<string, unknown>).app as Record<string, unknown>;
       expect(app.entrypoint).toEqual([
         '/bin/sh',
@@ -167,7 +167,7 @@ describe('compose-utils', () => {
       const composeObj: Record<string, unknown> = {
         services: { app: { image: 'app' } },
       };
-      applyRepoConfigToAppService(composeObj, minimalValidConfig);
+      applyEnvAndStartupCommandsToAppService(composeObj, minimalValidConfig);
       const app = (composeObj.services as Record<string, unknown>).app as Record<string, unknown>;
       expect(app.entrypoint).toBeUndefined();
       expect(app.command).toBeUndefined();
@@ -181,7 +181,7 @@ describe('compose-utils', () => {
         ...minimalValidConfig,
         env_file: '.env',
       };
-      applyRepoConfigToAppService(composeObj, config);
+      applyEnvAndStartupCommandsToAppService(composeObj, config);
       const app = (composeObj.services as Record<string, unknown>).app as Record<string, unknown>;
       expect(app.env_file).toBe('.env');
     });
@@ -194,7 +194,7 @@ describe('compose-utils', () => {
         ...minimalValidConfig,
         env: ['NODE_ENV=preview', 'DEBUG=true'],
       };
-      applyRepoConfigToAppService(composeObj, config);
+      applyEnvAndStartupCommandsToAppService(composeObj, config);
       const app = (composeObj.services as Record<string, unknown>).app as Record<string, unknown>;
       expect(app.environment).toEqual(['EXISTING=1', 'NODE_ENV=preview', 'DEBUG=true']);
     });
@@ -208,7 +208,7 @@ describe('compose-utils', () => {
         env_file: '.env',
         env: ['NODE_ENV=preview'],
       };
-      applyRepoConfigToAppService(composeObj, config);
+      applyEnvAndStartupCommandsToAppService(composeObj, config);
       const app = (composeObj.services as Record<string, unknown>).app as Record<string, unknown>;
       expect(app.env_file).toBe('.env');
       expect(app.environment).toEqual(['NODE_ENV=preview']);
