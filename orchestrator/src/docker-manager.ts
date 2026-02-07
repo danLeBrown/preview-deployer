@@ -15,7 +15,7 @@ import {
   TFramework,
 } from './types/preview-config';
 import {
-  applyRepoConfigToAppService,
+  applyEnvAndStartupCommandsToAppService,
   dumpCompose,
   getComposeFilePath,
   getGeneratedComposeFilePath,
@@ -381,8 +381,8 @@ export class DockerManager {
       // Normalize to Dockerfile so compose (dockerfile: Dockerfile) works on case-sensitive FS (e.g. Linux)
       const src = path.join(workDir, 'dockerfile');
       const dest = path.join(workDir, 'Dockerfile');
-      await fs.copyFile(src, dest);
-      this.logger.info({ workDir }, 'Copied dockerfile to Dockerfile for compose compatibility');
+      await fs.rename(src, dest);
+      this.logger.info({ workDir }, 'Renamed dockerfile to Dockerfile for compose compatibility');
       return;
     }
 
@@ -448,7 +448,7 @@ export class DockerManager {
       }),
     );
 
-    applyRepoConfigToAppService(composeObj, repoConfig);
+    applyEnvAndStartupCommandsToAppService(composeObj, repoConfig);
 
     const composeFile = getComposeFilePath(workDir);
     await fs.writeFile(composeFile, dumpCompose(composeObj), 'utf-8');

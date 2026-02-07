@@ -1,10 +1,13 @@
 import chalk from 'chalk';
+import * as dotenv from 'dotenv';
 import * as os from 'os';
 import * as path from 'path';
 
 import { AnsibleWrapper } from '../utils/ansible';
 import { ConfigManager } from '../utils/config';
 import { TerraformWrapper } from '../utils/terraform';
+
+dotenv.config({ path: path.join(process.cwd(), './cli/.env') });
 
 export async function syncCommand(): Promise<void> {
   console.log(chalk.blue('Syncing orchestrator code to server...\n'));
@@ -29,7 +32,7 @@ export async function syncCommand(): Promise<void> {
 
     const serverIp = outputs.server_ip.value;
     const sshKeyPath =
-      process.env.PREVIEW_SSH_KEY ?? path.join(os.homedir(), '.ssh', 'digital_ocean_ed25519');
+      process.env.PREVIEW_SSH_KEY_PATH ?? path.join(os.homedir(), '.ssh', 'digital_ocean_ed25519');
 
     console.log(chalk.blue(`Server: ${serverIp}`));
     console.log(chalk.blue(`SSH key: ${sshKeyPath}\n`));

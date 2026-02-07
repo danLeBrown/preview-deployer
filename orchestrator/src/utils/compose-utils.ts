@@ -134,7 +134,7 @@ export function parseComposeToObject(composeContent: string): Record<string, unk
   return (yaml.load(composeContent) as Record<string, unknown>) ?? {};
 }
 
-export function applyRepoConfigToAppService(
+export function applyEnvAndStartupCommandsToAppService(
   composeObj: Record<string, unknown>,
   repoConfig: IValidatedRepoPreviewConfig,
 ): void {

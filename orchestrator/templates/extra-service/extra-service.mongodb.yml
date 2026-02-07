@@ -1,6 +1,6 @@
 # MongoDB extra service (database). Merged into compose when extra_services: [mongodb].
 # App receives DATABASE_URL=mongodb://preview:preview@mongodb:27017/pr_{{prNumber}} and depends_on: mongodb.
-image: mongo:7-alpine
+image: mongo:7
 container_name: {{projectSlug}}-pr-{{prNumber}}-mongodb
 restart: unless-stopped
 ports:
@@ -9,8 +9,8 @@ environment:
   - MONGO_INITDB_ROOT_USERNAME=preview
   - MONGO_INITDB_ROOT_PASSWORD=preview
   - MONGO_INITDB_DATABASE=pr_{{prNumber}}
-  - MONGO_HOST=localhost
-  - MONGO_PORT=27017
+  # - MONGO_HOST=localhost
+  # - MONGO_PORT=27017
 healthcheck:
   test: ["CMD-SHELL", "mongosh --eval 'db.runCommand({ ping: 1 })'"]
   interval: 10s
