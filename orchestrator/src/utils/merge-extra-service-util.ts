@@ -9,6 +9,7 @@ function mergeRedisService(
 
   const redisUrl = `redis://redis:6379`;
   (services as Record<string, unknown>).redis = extraServiceBlock;
+
   // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
   const env = (app.environment as string[]) ?? [];
   if (!env.some((e) => e.startsWith('REDIS_URL='))) {
@@ -17,6 +18,7 @@ function mergeRedisService(
     // update the redis url
     app.environment = env.map((e) => (e.startsWith('REDIS_URL=') ? `REDIS_URL=${redisUrl}` : e));
   }
+
   app.depends_on = { redis: { condition: 'service_healthy' } };
 }
 
@@ -29,6 +31,8 @@ function mergePostgresService(
   const app = (services.app ?? {}) as Record<string, unknown>;
 
   const databaseUrl = `postgresql://preview:preview@postgres:5432/pr_${prNumber}`;
+  (services as Record<string, unknown>).postgres = extraServiceBlock;
+
   // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
   const env = (app.environment as string[]) ?? [];
   if (!env.some((e) => e.startsWith('DATABASE_URL='))) {
@@ -40,7 +44,6 @@ function mergePostgresService(
     );
   }
 
-  (services as Record<string, unknown>).postgres = extraServiceBlock;
   app.depends_on = { postgres: { condition: 'service_healthy' } };
 }
 
@@ -53,6 +56,8 @@ function mergeMysqlService(
   const app = (services.app ?? {}) as Record<string, unknown>;
 
   const databaseUrl = `mysql://preview:preview@mysql:3306/pr_${prNumber}`;
+  (services as Record<string, unknown>).mysql = extraServiceBlock;
+
   // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
   const env = (app.environment as string[]) ?? [];
 
@@ -65,7 +70,6 @@ function mergeMysqlService(
     );
   }
 
-  (services as Record<string, unknown>).mysql = extraServiceBlock;
   app.depends_on = { mysql: { condition: 'service_healthy' } };
 }
 
@@ -78,6 +82,8 @@ function mergeMongodbService(
   const app = (services.app ?? {}) as Record<string, unknown>;
 
   const databaseUrl = `mongodb://preview:preview@mongodb:27017/pr_${prNumber}`;
+  (services as Record<string, unknown>).mongodb = extraServiceBlock;
+
   // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
   const env = (app.environment as string[]) ?? [];
 
@@ -90,7 +96,6 @@ function mergeMongodbService(
     );
   }
 
-  (services as Record<string, unknown>).mongodb = extraServiceBlock;
   app.depends_on = { mongodb: { condition: 'service_healthy' } };
 }
 
