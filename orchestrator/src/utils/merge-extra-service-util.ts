@@ -1,5 +1,15 @@
 import { TExtraService } from '../types/preview-config';
 
+function addToDependsOn(app: Record<string, unknown>, service: string, condition: string): void {
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+  if (!(app.depends_on as Record<string, unknown>)) {
+    (app.depends_on as Record<string, unknown>) = {};
+  }
+
+  if (!(app.depends_on as Record<string, unknown>)[service]) {
+    (app.depends_on as Record<string, unknown>)[service] = { condition };
+  }
+}
 function mergeRedisService(
   composeObj: Record<string, unknown>,
   extraServiceBlock: Record<string, unknown>,
@@ -19,7 +29,7 @@ function mergeRedisService(
     app.environment = env.map((e) => (e.startsWith('REDIS_URL=') ? `REDIS_URL=${redisUrl}` : e));
   }
 
-  app.depends_on = { redis: { condition: 'service_healthy' } };
+  addToDependsOn(app, 'redis', 'service_healthy');
 }
 
 function mergePostgresService(
@@ -44,7 +54,7 @@ function mergePostgresService(
     );
   }
 
-  app.depends_on = { postgres: { condition: 'service_healthy' } };
+  addToDependsOn(app, 'postgres', 'service_healthy');
 }
 
 function mergeMysqlService(
@@ -70,7 +80,7 @@ function mergeMysqlService(
     );
   }
 
-  app.depends_on = { mysql: { condition: 'service_healthy' } };
+  addToDependsOn(app, 'mysql', 'service_healthy');
 }
 
 function mergeMongodbService(
@@ -81,7 +91,7 @@ function mergeMongodbService(
   const services = (composeObj.services ?? {}) as Record<string, unknown>;
   const app = (services.app ?? {}) as Record<string, unknown>;
 
-  const databaseUrl = `mongodb://preview:preview@mongodb:27017/pr_${prNumber}`;
+  const databaseUrl = `mongodb://preview:preview@mongodb:27017/pr_${prNumber}?authSource=admin`;
   (services as Record<string, unknown>).mongodb = extraServiceBlock;
 
   // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
@@ -96,7 +106,7 @@ function mergeMongodbService(
     );
   }
 
-  app.depends_on = { mongodb: { condition: 'service_healthy' } };
+  addToDependsOn(app, 'mongodb', 'service_healthy');
 }
 
 export function mergeExtraService(
