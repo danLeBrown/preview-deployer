@@ -175,11 +175,11 @@ export async function setupCommand(): Promise<void> {
   }
 }
 
-function createEnvAndStorePathToPreviewKey(privateKeyPath: string): void {
-  const envPath = path.join(process.cwd(), './cli/.env');
+function createEnvAndStorePathToPreviewKey(sshPrivateKeyPath: string): void {
+  const envPath = path.join(__dirname, '..', '..', '.env');
   if (fs.existsSync(envPath)) {
     fs.rmSync(envPath);
   }
-  fs.writeFileSync(envPath, `PREVIEW_SSH_KEY_PATH=${privateKeyPath}\n`);
+  fs.writeFileSync(envPath, `PREVIEW_SSH_KEY_PATH=${sshPrivateKeyPath}\n`);
   console.log(chalk.green(`\nPreview SSH key stored in ${envPath}`));
 }

@@ -381,7 +381,8 @@ export class DockerManager {
       // Normalize to Dockerfile so compose (dockerfile: Dockerfile) works on case-sensitive FS (e.g. Linux)
       const src = path.join(workDir, 'dockerfile');
       const dest = path.join(workDir, 'Dockerfile');
-      await fs.rename(src, dest);
+      await fs.copyFile(src, dest);
+      await fs.unlink(src);
       this.logger.info({ workDir }, 'Renamed dockerfile to Dockerfile for compose compatibility');
       return;
     }

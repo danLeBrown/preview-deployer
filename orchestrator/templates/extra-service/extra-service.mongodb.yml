@@ -1,6 +1,6 @@
 # MongoDB extra service (database). Merged into compose when extra_services: [mongodb].
 # App receives DATABASE_URL=mongodb://preview:preview@mongodb:27017/pr_{{prNumber}} and depends_on: mongodb.
-image: mongo:7
+image: mongo:7.0
 container_name: {{projectSlug}}-pr-{{prNumber}}-mongodb
 restart: unless-stopped
 ports:
